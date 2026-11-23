@@ -170,3 +170,11 @@ The folder holds `settings.json` (your preferences, safe to edit by hand), `sess
 
 **Portable use:** set the environment variable `PADSHARP_DATA` to a folder, for example on a USB stick, and PadSharp
 keeps everything there instead.
+
+## Contributing, changes and license
+
+- What's new in each version is in [CHANGELOG.md](CHANGELOG.md).
+- To report a bug or suggest an idea, open an issue. To help with the code, see [CONTRIBUTING.md](CONTRIBUTING.md).
+- To report a security problem, follow [SECURITY.md](SECURITY.md); please don't open a public issue.
+- PadSharp is released under the [MIT License](LICENSE). The components it ships with are listed in
+  [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

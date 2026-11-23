@@ -1,0 +1,25 @@
+name: Feature request
+description: Suggest an improvement or a new feature
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        PadSharp aims to stay a small, fast scratchpad editor. Ideas that make it simpler or faster are as welcome as new features.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like to do?
+      description: The task or problem, rather than the solution, e.g. "I often paste JSON and want to read it formatted".
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How could PadSharp help?
+      description: Your idea for how it could work, including any shortcut or menu you'd expect.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What do you do today?
+      description: Workarounds or other tools you use for this now.

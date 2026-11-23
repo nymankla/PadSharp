@@ -1,0 +1,41 @@
+name: Bug report
+description: Something in PadSharp doesn't work as it should
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a file with ...
+        2. Press Ctrl+...
+        3. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS
+        - Linux
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: PadSharp version or commit
+      placeholder: e.g. 0.1.0, or the commit you built from
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Screenshots, the file that triggers it (if you can share it), or error output from a terminal.

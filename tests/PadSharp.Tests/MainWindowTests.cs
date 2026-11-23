@@ -306,7 +306,8 @@ public sealed class MainWindowTests : IDisposable
 
         window.Press(Key.F1);
         Window about = Dialog(window);
-        Assert.Contains(about.All<TextBlock>(), t => t.Text?.Contains("scratchpad", StringComparison.Ordinal) == true);
+        Assert.Equal("0.1.0", MainWindow.Version);
+        Assert.Contains(about.All<TextBlock>(), t => t.Text?.StartsWith("PadSharp 0.1.0\n", StringComparison.Ordinal) == true);
         Click(about, "OK");
 
         window.Press(Key.OemComma, RawInputModifiers.Control);

@@ -130,3 +130,12 @@ Shows `3 of 12`, `No results`, or `Replaced N`.
 - C and TypeScript borrow the C++ and JavaScript definitions.
 
 **Zoom**: Zoom In/Out (Ctrl+Mouse Wheel, Ctrl+Numpad +/−), Reset Zoom (Ctrl+0); one point per step, range -10..+60.
+
+## Repository files
+
+`README.md` is for end users (shortcuts, hot exit, data folder); `CONTRIBUTING.md` for contributors. User-visible
+changes get a line under `[Unreleased]` in `CHANGELOG.md`, written for users. The version is `<Version>` in
+`PadSharp.csproj` (shown in About). MIT license; `LICENSE`, `THIRD-PARTY-NOTICES.md` and `README.md` are copied to
+the publish folder, so update the notices when a shipped package is added. CI (`.github/workflows/ci.yml`) builds
+and tests on Windows, Linux and macOS and publishes Native AOT artifacts; Dependabot groups the Avalonia packages
+(the headless test package pins the xUnit version).

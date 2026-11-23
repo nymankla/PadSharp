@@ -962,8 +962,12 @@ internal sealed partial class MainWindow : Window
         OnSettingsChanged();
     }
 
+    /// <summary>The version from the project file, e.g. "0.1.0".</summary>
+    internal static string Version => typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
+
     private Task<string?> ShowAboutAsync() =>
-        Dialogs.AskAsync(this, "About " + AppName, $"{AppName}\nA small, fast scratchpad editor. Your tabs and unsaved text are kept between runs.", "OK");
+        Dialogs.AskAsync(this, "About " + AppName,
+            $"{AppName} {Version}\nA small, fast scratchpad editor. Your tabs and unsaved text are kept between runs.\n\nMIT License.", "OK");
 
     private void OnDragOver(object? sender, DragEventArgs e)
     {

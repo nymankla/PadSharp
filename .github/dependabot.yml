@@ -1,0 +1,17 @@
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      # Avalonia packages must move together (Avalonia.Headless.XUnit also pins the xUnit version).
+      avalonia:
+        patterns: ["Avalonia*"]
+      test:
+        patterns: ["xunit*"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
