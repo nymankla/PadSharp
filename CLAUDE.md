@@ -114,8 +114,9 @@ Clicking language, line endings or encoding opens a picker. Column counts a tab 
 Numbers use the locale's thousands separators.
 
 **Find bar** (Ctrl+F, Ctrl+H for replace): searches as you type, always wraps; Enter / Shift+Enter = next /
-previous, F3 / Shift+F3 work with the bar closed, Esc closes. Toggles: match case (`Aa`), whole word (`W`).
-Shows `3 of 12`, `No results`, or `Replaced N`.
+previous, F3 / Shift+F3 work with the bar closed, Esc closes. Toggles: match case (`Aa`), whole word (`W`),
+regular expression (`.*`: .NET syntax, `^`/`$` per line, empty matches skipped, `$1`/`${name}` in Replace,
+1 s match timeout). Shows `3 of 12`, `No results`, `Replaced N`, or `Invalid regular expression`.
 
 **Line endings and encodings on open**
 - The first line break found decides the EOL style; none found means CRLF.

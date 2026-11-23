@@ -110,6 +110,17 @@ The find bar searches as you type and wraps around the end of the document. It s
 `3 of 12`. **Aa** matches upper and lower case exactly, and **W** finds whole words only. A Replace All can be
 undone in one step with `Ctrl+Z`.
 
+**`.*` turns on regular expressions** (.NET syntax):
+
+| Find | Replace | Does |
+|---|---|---|
+| `\d+` | | Finds numbers |
+| `^TODO` | | Finds `TODO` at the start of a line (`^` and `$` match at every line) |
+| `(\w+)@(\w+)` | `$2 at $1` | Swaps the two parts; `$1`, `$2` insert what each `( )` group matched |
+| `(?<key>\w+)=` | `${key}: ` | The same with a named group |
+
+An invalid pattern shows `Invalid regular expression` instead of searching.
+
 ### View
 
 | Keys | Action |

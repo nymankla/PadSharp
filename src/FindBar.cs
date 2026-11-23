@@ -35,6 +35,7 @@ internal sealed class FindBar : Border
     private readonly TextBox replaceBox = new() { PlaceholderText = "Replace", MinWidth = 260 };
     private readonly ToggleButton matchCase = Toggle("Aa", "Match case");
     private readonly ToggleButton wholeWord = Toggle("W", "Whole word");
+    private readonly ToggleButton regex = Toggle(".*", "Regular expression ($1 in Replace inserts a group)");
     private readonly TextBlock statusText = new() { VerticalAlignment = VerticalAlignment.Center, MinWidth = 90, FontSize = 12 };
     private readonly StackPanel replaceRow = new() { Orientation = Orientation.Horizontal, Spacing = 4 };
 
@@ -56,7 +57,7 @@ internal sealed class FindBar : Border
         {
             Orientation = Orientation.Horizontal,
             Spacing = 4,
-            Children = { findBox, matchCase, wholeWord, previous, next, statusText },
+            Children = { findBox, matchCase, wholeWord, regex, previous, next, statusText },
         };
         replaceRow.Children.AddRange([replaceBox, replace, replaceAll]);
 
@@ -70,6 +71,7 @@ internal sealed class FindBar : Border
         findBox.TextChanged += (_, _) => Raise(FindAction.Incremental);
         matchCase.IsCheckedChanged += (_, _) => Raise(FindAction.Incremental);
         wholeWord.IsCheckedChanged += (_, _) => Raise(FindAction.Incremental);
+        regex.IsCheckedChanged += (_, _) => Raise(FindAction.Incremental);
         findBox.KeyDown += (_, e) => OnBoxKey(e, e.KeyModifiers.HasFlag(KeyModifiers.Shift) ? FindAction.Previous : FindAction.Next);
         replaceBox.KeyDown += (_, e) => OnBoxKey(e, e.KeyModifiers.HasFlag(KeyModifiers.Control | KeyModifiers.Alt) ? FindAction.ReplaceAll : FindAction.Replace);
     }
@@ -81,7 +83,8 @@ internal sealed class FindBar : Border
 
     public string Query => findBox.Text ?? string.Empty;
 
-    public SearchOptions Options => new(matchCase.IsChecked == true, wholeWord.IsChecked == true, Backward: false);
+    public SearchOptions Options =>
+        new(matchCase.IsChecked == true, wholeWord.IsChecked == true, Backward: false, Regex: regex.IsChecked == true);
 
     /// <summary>Shows the bar (with the replace row when asked), seeded with a single-line selection.</summary>
     public void Open(bool replace, string seed)

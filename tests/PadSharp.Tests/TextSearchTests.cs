@@ -62,6 +62,67 @@ public sealed class TextSearchTests
         Assert.Equal(("a-b-a", 0), TextSearch.ReplaceAll("a-b-a", string.Empty, "x", Plain));
     }
 
+    private static readonly SearchOptions Rx = Plain with { Regex = true };
+
+    [AvaloniaFact]
+    public void RegexMatchesHaveTheirOwnLength()
+    {
+        Assert.Equal(new SearchHit(4, 3), TextSearch.Find("id: 123 and 45", @"\d+", 0, 0, Rx));
+        Assert.Equal([4, 12], TextSearch.Matches("id: 123 and 45", @"\d+", Rx));
+        Assert.Equal(new SearchHit(12, 2), TextSearch.Find("id: 123 and 45", @"\d+", 4, 7, Rx));
+    }
+
+    [AvaloniaFact]
+    public void RegexFollowsMatchCaseAndAnchorsAtLineBreaks()
+    {
+        Assert.Equal([0, 4], TextSearch.Matches("Cat\ncat", "^cat$", Rx));
+        Assert.Equal([4], TextSearch.Matches("Cat\ncat", "^cat$", Rx with { MatchCase = true }));
+    }
+
+    [AvaloniaFact]
+    public void RegexSearchesBackwardAndWraps()
+    {
+        Assert.Equal(0, TextSearch.Find("a1 b2 c3", "[a-z][0-9]", 3, 5, Rx with { Backward = true })?.Index);
+        Assert.Equal(6, TextSearch.Find("a1 b2 c3", "[a-z][0-9]", 0, 2, Rx with { Backward = true })?.Index);
+    }
+
+    [AvaloniaFact]
+    public void RegexWholeWordAndEmptyMatchesAreSkipped()
+    {
+        Assert.Equal([5], TextSearch.Matches("cats cat", "cat", Rx with { WholeWord = true }));
+        Assert.Equal([1], TextSearch.Matches("ba", "a*", Rx));
+    }
+
+    [AvaloniaFact]
+    public void RegexReplacementsFillInGroups()
+    {
+        Assert.Equal(("y=1, x=2", 2), TextSearch.ReplaceAll("1=y, 2=x", @"(\d)=(\w)", "$2=$1", Rx));
+        Assert.Equal("<abc>", TextSearch.ReplacementAt("x abc y", @"(?<w>[a-c]+)", 2, 3, "<${w}>", Rx));
+        Assert.Null(TextSearch.ReplacementAt("x abc y", "[a-c]+", 2, 2, "-", Rx));
+        Assert.Equal("$1", TextSearch.ReplacementAt("a", "a", 0, 1, "$1", Plain));
+    }
+
+    [AvaloniaFact]
+    public void AnInvalidPatternIsReportedNotThrown()
+    {
+        Assert.Equal("Invalid regular expression", TextSearch.Problem("(", Rx));
+        Assert.Null(TextSearch.Problem("(", Plain));
+        Assert.Null(TextSearch.Problem("a+", Rx));
+        Assert.Null(TextSearch.Find("(((", "(", 0, 0, Rx));
+        Assert.Equal(("(((", 0), TextSearch.ReplaceAll("(((", "(", "x", Rx));
+        Assert.Equal(0, TextSearch.Find("(((", "(", 0, 0, Plain)?.Index);
+    }
+
+    [AvaloniaFact]
+    public void ARunawayPatternStopsInsteadOfHanging()
+    {
+        string text = new string('a', 40) + "!";
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+
+        Assert.Empty(TextSearch.Matches(text, "(a+)+$", Rx));
+        Assert.True(timer.Elapsed < TimeSpan.FromSeconds(10));
+    }
+
     [AvaloniaFact]
     public void IsMatchAtChecksTheExactSpan()
     {

@@ -1,125 +1,178 @@
+using System.Text.RegularExpressions;
+
 namespace PadSharp;
 
-internal readonly record struct SearchOptions(bool MatchCase, bool WholeWord, bool Backward);
+/// <summary>How to search: case, whole words, direction, and whether the query is a regular expression.</summary>
+internal readonly record struct SearchOptions(bool MatchCase, bool WholeWord, bool Backward, bool Regex = false);
 
 internal readonly record struct SearchHit(int Index, int Length);
 
-/// <summary>Plain-text search used by the find bar. Searches always wrap around the document.</summary>
+/// <summary>
+/// Text search used by the find bar. Searches always wrap around the document. With <see cref="SearchOptions.Regex"/>
+/// the query is a .NET regular expression: <c>^</c> and <c>$</c> match at line breaks, empty matches are skipped,
+/// replacements may use <c>$1</c> / <c>${name}</c>, and a pattern that runs too long stops after a second.
+/// </summary>
 internal static class TextSearch
 {
+    private static readonly TimeSpan RegexTimeout = TimeSpan.FromSeconds(1);
+    private static (string Pattern, RegexOptions Options, Regex Regex)? cached;
+
+    /// <summary>Why the query can't be searched (an invalid regular expression), or null when it can.</summary>
+    public static string? Problem(string query, SearchOptions options)
+    {
+        if (!options.Regex || query.Length == 0)
+        {
+            return null;
+        }
+
+        try
+        {
+            _ = RegexFor(query, options);
+            return null;
+        }
+        catch (ArgumentException)
+        {
+            return "Invalid regular expression";
+        }
+    }
+
     /// <summary>
     /// Finds the next match, wrapping at the ends. Forward searches start at <paramref name="selEnd"/>;
     /// backward searches look for a match ending at or before <paramref name="selStart"/>.
     /// </summary>
     public static SearchHit? Find(string text, string query, int selStart, int selEnd, SearchOptions options)
     {
-        if (query.Length == 0)
+        List<SearchHit> hits = Hits(text, query, options);
+        if (hits.Count == 0)
         {
             return null;
         }
 
-        int idx = options.Backward
-            ? Backward(text, query, selStart, options) is var b and >= 0 ? b : Backward(text, query, text.Length, options)
-            : Forward(text, query, selEnd, text.Length, options) is var f and >= 0 ? f : Forward(text, query, 0, text.Length, options);
-        return idx >= 0 ? new SearchHit(idx, query.Length) : null;
+        return options.Backward
+            ? hits.LastOrDefault(h => h.Index + h.Length <= selStart, hits[^1])
+            : hits.FirstOrDefault(h => h.Index >= selEnd, hits[0]);
     }
 
     /// <summary>Start index of every match, in order.</summary>
-    public static List<int> Matches(string text, string query, SearchOptions options)
-    {
-        var found = new List<int>();
-        if (query.Length == 0)
-        {
-            return found;
-        }
-
-        int pos = 0;
-        while (Forward(text, query, pos, text.Length, options) is var idx and >= 0)
-        {
-            found.Add(idx);
-            pos = idx + query.Length;
-        }
-
-        return found;
-    }
+    public static List<int> Matches(string text, string query, SearchOptions options) =>
+        [.. Hits(text, query, options).Select(h => h.Index)];
 
     /// <summary>Replaces every match; returns the new text and how many were replaced.</summary>
     public static (string Text, int Count) ReplaceAll(string text, string query, string replacement, SearchOptions options)
     {
-        List<int> matches = Matches(text, query, options);
-        if (matches.Count == 0)
+        List<SearchHit> hits = Hits(text, query, options);
+        if (hits.Count == 0)
         {
             return (text, 0);
         }
 
         var sb = new System.Text.StringBuilder(text.Length);
         int pos = 0;
-        foreach (int idx in matches)
+        foreach (SearchHit hit in hits)
         {
-            sb.Append(text, pos, idx - pos).Append(replacement);
-            pos = idx + query.Length;
+            sb.Append(text, pos, hit.Index - pos).Append(Expand(text, query, hit, replacement, options));
+            pos = hit.Index + hit.Length;
         }
 
         sb.Append(text, pos, text.Length - pos);
-        return (sb.ToString(), matches.Count);
+        return (sb.ToString(), hits.Count);
     }
 
-    public static bool IsMatchAt(string text, string query, int index, int length, SearchOptions options)
+    /// <summary>True when exactly this span is a match (the find bar's Replace checks the selection with it).</summary>
+    public static bool IsMatchAt(string text, string query, int index, int length, SearchOptions options) =>
+        ReplacementAt(text, query, index, length, string.Empty, options) is not null;
+
+    /// <summary>
+    /// The text that replaces the match at exactly this span (with <c>$1</c> etc. filled in for a regular
+    /// expression), or null when the span isn't a match.
+    /// </summary>
+    public static string? ReplacementAt(string text, string query, int index, int length, string replacement, SearchOptions options)
     {
-        if (length != query.Length || index < 0 || index + length > text.Length)
+        if (length == 0 || index < 0 || index + length > text.Length)
         {
-            return false;
+            return null;
         }
 
-        return string.Compare(text, index, query, 0, length, Comparison(options)) == 0
-            && (!options.WholeWord || IsWholeWord(text, index, length));
+        var hit = new SearchHit(index, length);
+        return Hits(text, query, options).Contains(hit) ? Expand(text, query, hit, replacement, options) : null;
     }
 
-    private static StringComparison Comparison(SearchOptions options) =>
-        options.MatchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-
-    private static int Forward(string text, string query, int from, int to, SearchOptions options)
+    /// <summary>Every match in order, without overlaps; empty for an empty or invalid query.</summary>
+    private static List<SearchHit> Hits(string text, string query, SearchOptions options)
     {
-        int pos = Math.Clamp(from, 0, text.Length);
-        while (pos <= to - query.Length)
+        if (query.Length == 0 || Problem(query, options) is not null)
         {
-            int idx = text.IndexOf(query, pos, to - pos, Comparison(options));
-            if (idx < 0)
-            {
-                return -1;
-            }
-
-            if (!options.WholeWord || IsWholeWord(text, idx, query.Length))
-            {
-                return idx;
-            }
-
-            pos = idx + 1;
+            return [];
         }
 
-        return -1;
+        return options.Regex ? RegexHits(text, RegexFor(query, options), options) : PlainHits(text, query, options);
     }
 
-    private static int Backward(string text, string query, int endLimit, SearchOptions options)
+    private static List<SearchHit> PlainHits(string text, string query, SearchOptions options)
     {
-        int end = Math.Clamp(endLimit, 0, text.Length);
-        while (end >= query.Length)
+        var hits = new List<SearchHit>();
+        StringComparison comparison = options.MatchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+        int pos = 0;
+        while (pos <= text.Length - query.Length && text.IndexOf(query, pos, comparison) is var idx and >= 0)
         {
-            int idx = text.LastIndexOf(query, end - 1, end, Comparison(options));
-            if (idx < 0)
+            bool accepted = !options.WholeWord || IsWholeWord(text, idx, query.Length);
+            if (accepted)
             {
-                return -1;
+                hits.Add(new SearchHit(idx, query.Length));
             }
 
-            if (!options.WholeWord || IsWholeWord(text, idx, query.Length))
-            {
-                return idx;
-            }
-
-            end = idx + query.Length - 1;
+            pos = accepted ? idx + query.Length : idx + 1;
         }
 
-        return -1;
+        return hits;
+    }
+
+    private static List<SearchHit> RegexHits(string text, Regex regex, SearchOptions options)
+    {
+        var hits = new List<SearchHit>();
+        try
+        {
+            for (Match m = regex.Match(text); m.Success; m = m.NextMatch())
+            {
+                if (m.Length > 0 && (!options.WholeWord || IsWholeWord(text, m.Index, m.Length)))
+                {
+                    hits.Add(new SearchHit(m.Index, m.Length));
+                }
+            }
+        }
+        catch (RegexMatchTimeoutException)
+        {
+            // A runaway pattern: keep what was found rather than hang the editor.
+        }
+
+        return hits;
+    }
+
+    /// <summary>The replacement for one hit: as typed, or with groups filled in for a regular expression.</summary>
+    private static string Expand(string text, string query, SearchHit hit, string replacement, SearchOptions options)
+    {
+        if (!options.Regex)
+        {
+            return replacement;
+        }
+
+        Match m = RegexFor(query, options).Match(text, hit.Index);
+        return m.Success && m.Index == hit.Index ? m.Result(replacement) : replacement;
+    }
+
+    /// <summary>The compiled pattern; the last one is reused, since the find bar asks again on every key.</summary>
+    private static Regex RegexFor(string pattern, SearchOptions options)
+    {
+        RegexOptions flags = RegexOptions.Multiline | RegexOptions.CultureInvariant
+            | (options.MatchCase ? RegexOptions.None : RegexOptions.IgnoreCase);
+        if (cached is { } c && c.Pattern == pattern && c.Options == flags)
+        {
+            return c.Regex;
+        }
+
+        var regex = new Regex(pattern, flags, RegexTimeout);
+        cached = (pattern, flags, regex);
+        return regex;
     }
 
     private static bool IsWordChar(char c) => char.IsLetterOrDigit(c) || c == '_';

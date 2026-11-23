@@ -13,7 +13,8 @@ All notable changes to PadSharp are listed here. The format follows
 - Files changed by another program reload automatically. If the tab has unsaved changes, you choose
   **Reload** or **Keep Mine**.
 - A find bar inside the window (`Ctrl+F`, `Ctrl+H` for replace) that searches as you type, wraps around and shows
-  `3 of 12`. Options: match case and whole word. A Replace All undoes in one step.
+  `3 of 12`. Options: match case, whole word and regular expressions (with `$1` groups in Replace). A Replace All
+  undoes in one step.
 - A status bar showing language, position, selection, line count, line endings and encoding. Click the language,
   line endings or encoding to change them.
 - Syntax colouring for 24 languages, detected from the file name or the first line. Batch, INI, Rust, Shell, TeX

@@ -15,7 +15,11 @@ internal sealed partial class MainWindow
             return;
         }
 
-        if (Current is { } doc)
+        if (TextSearch.Problem(findBar.Query, findBar.Options) is { } problem)
+        {
+            Report(problem, problem: true);
+        }
+        else if (Current is { } doc)
         {
             Find(doc, findBar.Query, findBar.Options with { Backward = backward }, incremental: false);
         }
@@ -81,6 +85,12 @@ internal sealed partial class MainWindow
             return;
         }
 
+        if (TextSearch.Problem(e.Query, e.Options) is { } problem)
+        {
+            Report(problem, problem: true);
+            return;
+        }
+
         switch (e.Action)
         {
             case FindAction.Incremental:
@@ -101,15 +111,15 @@ internal sealed partial class MainWindow
         }
     }
 
-    /// <summary>Replaces the selection when it is a match, then selects the next one.</summary>
+    /// <summary>Replaces the selection when it is a match (filling in <c>$1</c> etc. for a regex), then selects the next one.</summary>
     private void ReplaceCurrent(Document doc, FindRequestEventArgs e)
     {
         TextEditor editor = doc.Editor;
-        if (TextSearch.IsMatchAt(doc.Text, e.Query, editor.SelectionStart, editor.SelectionLength, e.Options))
+        int start = editor.SelectionStart;
+        if (TextSearch.ReplacementAt(doc.Text, e.Query, start, editor.SelectionLength, e.Replacement, e.Options) is { } replacement)
         {
-            int start = editor.SelectionStart;
-            editor.Document.Replace(start, editor.SelectionLength, e.Replacement);
-            editor.Select(start + e.Replacement.Length, 0);
+            editor.Document.Replace(start, editor.SelectionLength, replacement);
+            editor.Select(start + replacement.Length, 0);
         }
 
         Find(doc, e.Query, e.Options, incremental: false);

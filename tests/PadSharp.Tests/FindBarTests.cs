@@ -103,9 +103,10 @@ public sealed class FindBarTests : IDisposable
 
         toggles.Single(t => t.Content as string == "Aa").IsChecked = true;
         toggles.Single(t => t.Content as string == "W").IsChecked = true;
+        toggles.Single(t => t.Content as string == ".*").IsChecked = true;
 
-        Assert.Equal(new SearchOptions(MatchCase: true, WholeWord: true, Backward: false), bar.Options);
-        Assert.Equal([FindAction.Incremental, FindAction.Incremental], Actions);
+        Assert.Equal(new SearchOptions(MatchCase: true, WholeWord: true, Backward: false, Regex: true), bar.Options);
+        Assert.Equal([FindAction.Incremental, FindAction.Incremental, FindAction.Incremental], Actions);
     }
 
     [AvaloniaFact]

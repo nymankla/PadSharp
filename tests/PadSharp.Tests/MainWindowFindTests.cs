@@ -65,6 +65,54 @@ public sealed class MainWindowFindTests : IDisposable
         Assert.Equal("1 of 2", FindStatus);
     }
 
+    private void UseRegex() =>
+        window.FindBar.All<ToggleButton>().Single(t => t.Content as string == ".*").IsChecked = true;
+
+    [AvaloniaFact]
+    public void RegexSearchSelectsTheWholeMatch()
+    {
+        Search("d.g|C.t");
+        UseRegex();
+
+        Assert.Equal("1 of 4", FindStatus);
+        Assert.Equal("cat", Selected);
+        window.Press(Key.Enter);
+        window.Press(Key.Enter);
+        Assert.Equal((8, "dog", "3 of 4"), (doc.Editor.SelectionStart, Selected, FindStatus));
+    }
+
+    [AvaloniaFact]
+    public void AnInvalidRegexIsReported()
+    {
+        UseRegex();
+        Search("(");
+
+        Assert.Equal("Invalid regular expression", FindStatus);
+
+        window.Press(Key.Escape);
+        window.Press(Key.F3);
+        Assert.Equal("Invalid regular expression", window.StatusParts[0]);
+    }
+
+    [AvaloniaFact]
+    public void RegexReplaceUsesGroups()
+    {
+        window.Press(Key.H, RawInputModifiers.Control);
+        UseRegex();
+        window.FindBar.All<TextBox>().Single(t => t.PlaceholderText == "Find").Focus();
+        window.Type(@"(\w+) (\w+)");
+        TextBox replace = window.FindBar.All<TextBox>().Single(t => t.PlaceholderText == "Replace");
+        replace.Text = "$2 $1";
+        replace.Focus();
+
+        window.Press(Key.Enter);
+        Assert.Equal("Cat cat dog cat", doc.Text);
+
+        window.Press(Key.Enter, RawInputModifiers.Control | RawInputModifiers.Alt);
+        Assert.Equal("cat Cat cat dog", doc.Text);
+        Assert.Equal("Replaced 2", FindStatus);
+    }
+
     [AvaloniaFact]
     public void NoMatchSaysSo()
     {
