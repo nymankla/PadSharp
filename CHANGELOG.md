@@ -6,6 +6,11 @@ All notable changes to PadSharp are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Wildcards in file names on the command line, such as `ed *.cs` or `ed notes/day?.md`, open every matching file,
+  also on Windows where the terminal passes the pattern on as typed.
+
 ## [0.1.0] - 2026-11-23
 
 ### Added

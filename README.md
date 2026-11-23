@@ -21,7 +21,8 @@ blocks them. Right-click PadSharp.app and choose **Open** once, or run
 `xattr -dr com.apple.quarantine /Applications/PadSharp.app`. **Windows SmartScreen** may also warn about an unsigned
 program; choose **More info → Run anyway**.
 
-- **Open files from the command line:** `PadSharp notes.txt todo.md`
+- **Open files from the command line:** `PadSharp notes.txt todo.md`. Wildcards work in the file name, also in
+  the Windows command prompt: `PadSharp *.cs src/note?.md`.
 - **Open files any time:** drag them onto the window, or use **File → Open** (`Ctrl+O`).
 - **PadSharp runs once.** Starting it again (from a terminal, a shortcut or `ed`) sends the files to the window
   that's already open and brings it to the front, instead of opening a second window.
@@ -35,6 +36,7 @@ Next to the program is a small launcher script, `ed` (`ed.cmd` on Windows). Put 
 ```
 ed                     # open PadSharp
 ed notes.txt todo.md   # open these files (relative names are fine)
+ed *.md                 # open every Markdown file in this folder
 ```
 
 It hands the prompt straight back to you; it doesn't wait for the editor to close. If PadSharp is already

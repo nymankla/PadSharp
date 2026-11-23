@@ -117,6 +117,9 @@ arguments go to that window over a current-user named pipe (`SingleInstance`), a
 window runs `SingleInstanceServer`, opens what it receives and comes to the front. If the hand-off fails, the
 start continues as a window that doesn't own the session. `--screenshot` runs never forward or claim.
 
+**Command line**: `*` and `?` in the file-name part of an argument are expanded (`Program.ExpandWildcards`) before
+the hand-off, sorted; a pattern with no match, or that names an existing file, stays as typed. Not in folder parts.
+
 **Window**: size, position (moved back on screen if its monitor is gone), maximized state and zoom are kept in
 settings on close. Screenshot runs use 1100x720 with no zoom. Shortcuts are written `Ctrl+…` and become `Cmd+…` on
 macOS (`MainWindow.ForPlatform`); `Ctrl+Tab` stays. Zoom keys: `Ctrl+=`, `Ctrl+Shift+=`, `Ctrl+-` and the numpad.
