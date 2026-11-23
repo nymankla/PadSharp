@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Rust. Colours here are placeholders; SyntaxTheme recolours by name. -->
+<SyntaxDefinition name="Rust" extensions=".rs" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  <Color name="Comment" foreground="#008000" />
+  <Color name="String" foreground="#808080" />
+  <Color name="Char" foreground="#808080" />
+  <Color name="Number" foreground="#FF0000" />
+  <Color name="Keyword" foreground="#0000FF" fontWeight="bold" />
+  <Color name="TrueFalse" foreground="#0000FF" />
+  <Color name="BuiltinType" foreground="#8000FF" />
+  <Color name="Attribute" foreground="#808000" />
+  <Color name="MacroCall" foreground="#804000" />
+  <Color name="FunctionName" foreground="#000080" />
+  <Color name="LifetimeParam" foreground="#008080" />
+  <Color name="SelfVariable" foreground="#0000FF" />
+
+  <RuleSet>
+    <Span color="Comment">
+      <Begin>//</Begin>
+    </Span>
+    <Span color="Comment" multiline="true">
+      <Begin>/\*</Begin>
+      <End>\*/</End>
+    </Span>
+    <!-- Raw strings: with hashes the closing quote must be followed by a hash (the exact count isn't matched). -->
+    <Span color="String" multiline="true">
+      <Begin>b?r\#+"</Begin>
+      <End>"\#+</End>
+    </Span>
+    <Span color="String" multiline="true">
+      <Begin>b?r"</Begin>
+      <End>"</End>
+    </Span>
+    <Span color="String" multiline="true">
+      <Begin>b?"</Begin>
+      <End>"</End>
+      <RuleSet>
+        <Span begin="\\" end="." />
+      </RuleSet>
+    </Span>
+
+    <Rule color="Attribute">\#!?\[[^\]]*\]</Rule>
+    <Rule color="Char">b?'(\\(x[0-9A-Fa-f]{2}|u\{[0-9A-Fa-f]+\}|.)|[^\\'])'</Rule>
+    <Rule color="LifetimeParam">'[A-Za-z_]\w*</Rule>
+    <Rule color="MacroCall">\b[A-Za-z_]\w*!</Rule>
+
+    <Keywords color="SelfVariable">
+      <Word>self</Word><Word>Self</Word>
+    </Keywords>
+    <Keywords color="TrueFalse">
+      <Word>true</Word><Word>false</Word>
+    </Keywords>
+    <Keywords color="Keyword">
+      <Word>as</Word><Word>async</Word><Word>await</Word><Word>break</Word><Word>const</Word><Word>continue</Word>
+      <Word>crate</Word><Word>dyn</Word><Word>else</Word><Word>enum</Word><Word>extern</Word><Word>fn</Word>
+      <Word>for</Word><Word>if</Word><Word>impl</Word><Word>in</Word><Word>let</Word><Word>loop</Word>
+      <Word>match</Word><Word>mod</Word><Word>move</Word><Word>mut</Word><Word>pub</Word><Word>ref</Word>
+      <Word>return</Word><Word>static</Word><Word>struct</Word><Word>super</Word><Word>trait</Word><Word>type</Word>
+      <Word>unsafe</Word><Word>use</Word><Word>where</Word><Word>while</Word><Word>yield</Word>
+    </Keywords>
+    <Keywords color="BuiltinType">
+      <Word>i8</Word><Word>i16</Word><Word>i32</Word><Word>i64</Word><Word>i128</Word><Word>isize</Word>
+      <Word>u8</Word><Word>u16</Word><Word>u32</Word><Word>u64</Word><Word>u128</Word><Word>usize</Word>
+      <Word>f32</Word><Word>f64</Word><Word>bool</Word><Word>char</Word><Word>str</Word><Word>String</Word>
+      <Word>Vec</Word><Word>Option</Word><Word>Result</Word><Word>Box</Word><Word>Some</Word><Word>None</Word>
+      <Word>Ok</Word><Word>Err</Word>
+    </Keywords>
+
+    <Rule color="FunctionName">(?&lt;=\bfn\s+)[A-Za-z_]\w*</Rule>
+    <Rule color="Number">\b(0x[0-9A-Fa-f_]+|0o[0-7_]+|0b[01_]+|[0-9][0-9_]*(\.[0-9_]+)?([eE][+-]?[0-9_]+)?)([iu](8|16|32|64|128|size)|f32|f64)?\b</Rule>
+  </RuleSet>
+</SyntaxDefinition>

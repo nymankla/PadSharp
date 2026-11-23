@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Windows batch files. Colours here are placeholders; SyntaxTheme recolours by name. -->
+<SyntaxDefinition name="Batch" extensions=".bat;.cmd;.nt" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  <Color name="Comment" foreground="#008000" />
+  <Color name="Keyword" foreground="#0000FF" fontWeight="bold" />
+  <Color name="Label" foreground="#FF0000" background="#FFFF80" fontWeight="bold" />
+  <Color name="Hide" foreground="#0000FF" />
+  <Color name="Variable" foreground="#FF8000" />
+  <Color name="Operator" foreground="#FF0000" />
+
+  <RuleSet ignoreCase="true">
+    <Span color="Comment">
+      <Begin>^\s*@?(rem\b|::)</Begin>
+    </Span>
+
+    <Rule color="Label">^\s*:[^\s:]\S*</Rule>
+    <Rule color="Hide">^\s*@</Rule>
+
+    <Keywords color="Keyword">
+      <Word>assoc</Word><Word>break</Word><Word>call</Word><Word>cd</Word><Word>chcp</Word><Word>chdir</Word>
+      <Word>choice</Word><Word>cls</Word><Word>color</Word><Word>copy</Word><Word>defined</Word><Word>del</Word>
+      <Word>dir</Word><Word>do</Word><Word>echo</Word><Word>else</Word><Word>endlocal</Word><Word>equ</Word>
+      <Word>erase</Word><Word>errorlevel</Word><Word>exist</Word><Word>exit</Word><Word>for</Word><Word>ftype</Word>
+      <Word>geq</Word><Word>goto</Word><Word>gtr</Word><Word>if</Word><Word>in</Word><Word>leq</Word><Word>lss</Word>
+      <Word>md</Word><Word>mkdir</Word><Word>move</Word><Word>neq</Word><Word>not</Word><Word>nul</Word>
+      <Word>path</Word><Word>pause</Word><Word>popd</Word><Word>prompt</Word><Word>pushd</Word><Word>rd</Word>
+      <Word>ren</Word><Word>rename</Word><Word>rmdir</Word><Word>set</Word><Word>setlocal</Word><Word>shift</Word>
+      <Word>start</Word><Word>time</Word><Word>title</Word><Word>type</Word><Word>ver</Word><Word>verify</Word>
+      <Word>vol</Word>
+    </Keywords>
+
+    <Rule color="Variable">%%~?[a-z]|%~[a-z]*[0-9]|%[0-9*]|%[^%\s]+%|![^!\s]+!</Rule>
+    <Rule color="Operator">[&amp;|&lt;&gt;()]</Rule>
+  </RuleSet>
+</SyntaxDefinition>

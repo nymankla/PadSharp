@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Unix shell scripts. Colours here are placeholders; SyntaxTheme recolours by name. -->
+<SyntaxDefinition name="Shell" extensions=".sh;.bash;.zsh" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  <Color name="Comment" foreground="#008000" />
+  <Color name="Number" foreground="#FF0000" />
+  <Color name="Keyword" foreground="#0000FF" fontWeight="bold" />
+  <Color name="String" foreground="#808080" />
+  <Color name="Operator" foreground="#804000" fontWeight="bold" />
+  <Color name="Variable" foreground="#FF8000" fontWeight="bold" />
+  <Color name="Backticks" foreground="#FFFF00" background="#A08080" />
+
+  <RuleSet name="Variables">
+    <Rule color="Variable">\$\{[^}]*\}|\$\(\(?|\$[A-Za-z_][A-Za-z0-9_]*|\$[0-9\#?@*$!-]</Rule>
+  </RuleSet>
+
+  <RuleSet>
+    <Span color="Comment">
+      <Begin>(?&lt;![\w$\{])\#</Begin>
+    </Span>
+
+    <Span color="String" multiline="true">
+      <Begin>"</Begin>
+      <End>"</End>
+      <RuleSet>
+        <Span begin="\\" end="." />
+        <Import ruleSet="Variables" />
+      </RuleSet>
+    </Span>
+
+    <Span color="String" multiline="true">
+      <Begin>'</Begin>
+      <End>'</End>
+    </Span>
+
+    <Span color="Backticks">
+      <Begin>`</Begin>
+      <End>`</End>
+    </Span>
+
+    <Keywords color="Keyword">
+      <Word>alias</Word><Word>break</Word><Word>case</Word><Word>cd</Word><Word>continue</Word><Word>declare</Word>
+      <Word>do</Word><Word>done</Word><Word>echo</Word><Word>elif</Word><Word>else</Word><Word>esac</Word>
+      <Word>eval</Word><Word>exec</Word><Word>exit</Word><Word>export</Word><Word>false</Word><Word>fi</Word>
+      <Word>for</Word><Word>function</Word><Word>if</Word><Word>in</Word><Word>let</Word><Word>local</Word>
+      <Word>printf</Word><Word>read</Word><Word>readonly</Word><Word>return</Word><Word>select</Word><Word>set</Word>
+      <Word>shift</Word><Word>source</Word><Word>test</Word><Word>then</Word><Word>time</Word><Word>trap</Word>
+      <Word>true</Word><Word>typeset</Word><Word>unset</Word><Word>until</Word><Word>while</Word>
+    </Keywords>
+
+    <Import ruleSet="Variables" />
+    <Rule color="Number">\b[0-9]+\b</Rule>
+    <Rule color="Operator">[|&amp;;&lt;&gt;()\[\]{}!=]</Rule>
+  </RuleSet>
+</SyntaxDefinition>

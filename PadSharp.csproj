@@ -1,0 +1,59 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net11.0</TargetFramework>
+    <LangVersion>15</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>PadSharp</RootNamespace>
+    <AssemblyName>PadSharp</AssemblyName>
+
+    <!-- Lint: compiler warnings + .NET analyzers + code style, all enforced at build time. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <AnalysisMode>Recommended</AnalysisMode>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+
+    <!--
+      Native AOT: `dotnet publish -c Release -r win-x64` (or linux-x64 / osx-arm64) produces one self-contained
+      native executable. PublishAot also turns on the trim, AOT and single-file analyzers for every normal
+      build, so with TreatWarningsAsErrors any AOT-unsafe code fails the build, not the publish.
+    -->
+    <PublishAot>true</PublishAot>
+    <IsAotCompatible>true</IsAotCompatible>
+    <!-- Report each trim/AOT warning on its own instead of one summary line per package. -->
+    <TrimmerSingleWarn>false</TrimmerSingleWarn>
+    <!-- Smaller binary: drop debugger/diagnostic extras that a release text editor doesn't need. -->
+    <DebuggerSupport Condition="'$(Configuration)' == 'Release'">false</DebuggerSupport>
+    <StackTraceSupport>true</StackTraceSupport>
+    <UseSystemResourceKeys>false</UseSystemResourceKeys>
+    <!-- Ship only what runs: no debug symbols or API docs XML in the publish folder. -->
+    <CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>
+    <PublishDocumentationFile>false</PublishDocumentationFile>
+  </PropertyGroup>
+
+  <!-- The Skia/HarfBuzz packages also bring native .pdb files; leave them out of the publish folder. -->
+  <Target Name="DropSymbolsFromPublish" AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Extension)' == '.pdb'" />
+    </ItemGroup>
+  </Target>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.6" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.6" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.6" />
+    <PackageReference Include="Avalonia.AvaloniaEdit" Version="12.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="syntax/*.xshd" LogicalName="PadSharp.Syntax.%(Filename)%(Extension)" />
+    <Compile Remove="bin/**;obj/**;.claude/**" />
+  </ItemGroup>
+
+</Project>

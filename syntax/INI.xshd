@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ini / properties style files. Colours here are placeholders; SyntaxTheme recolours by name. -->
+<SyntaxDefinition name="INI" extensions=".ini;.inf" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  <Color name="Comment" foreground="#008000" />
+  <Color name="Section" foreground="#8000FF" fontWeight="bold" />
+  <Color name="Assignment" foreground="#FF0000" />
+  <Color name="Key" foreground="#0000FF" />
+
+  <RuleSet>
+    <Span color="Comment">
+      <Begin>^\s*[;\#]</Begin>
+    </Span>
+    <Rule color="Section">^\s*\[[^\]]*\]</Rule>
+    <Rule color="Key">^\s*[^=:\s\[;\#][^=:]*?(?=\s*[=:])</Rule>
+    <Rule color="Assignment">[=:]</Rule>
+  </RuleSet>
+</SyntaxDefinition>

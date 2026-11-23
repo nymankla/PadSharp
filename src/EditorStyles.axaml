@@ -1,0 +1,9 @@
+<!--
+  The text editor's control styles. Declared in XAML (not `new StyleInclude(uri)` in code) so the
+  Avalonia XAML compiler resolves it at build time: that keeps it safe for trimming and Native AOT.
+-->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="PadSharp.EditorStyles">
+  <StyleInclude Source="avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml" />
+</Styles>
