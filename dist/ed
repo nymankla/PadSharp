@@ -1,0 +1,16 @@
+#!/bin/sh
+# ed: start PadSharp with the given files and return to the shell (Linux and macOS).
+# Usage: ed [files...]
+# Rename this file to anything you like (pad, e, ...), or link to it under any name
+# (ln -s /opt/PadSharp/ed ~/bin/pad): it finds PadSharp in the folder of the real file, not by its name.
+# Note that "ed" is also the classic Unix line editor; if that one is on your PATH, pick another name.
+self=$0
+while [ -L "$self" ]; do
+    link=$(readlink "$self")
+    case $link in
+        /*) self=$link ;;
+        *) self=$(dirname -- "$self")/$link ;;
+    esac
+done
+dir=$(CDPATH= cd -- "$(dirname -- "$self")" && pwd)
+nohup "$dir/PadSharp" "$@" >/dev/null 2>&1 &

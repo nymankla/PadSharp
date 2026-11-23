@@ -45,8 +45,8 @@ over four files).
 ## 3. Read before recommending
 
 Open every method in the top six by cognitive complexity and by length; never recommend from numbers alone. For
-each, name a concrete change that keeps the behaviour, and how it will be checked (there is no test project: the
-build plus a `--screenshot` run, see CLAUDE.md).
+each, name a concrete change that keeps the behaviour, and the tests that hold it (the method's `<File>Tests`
+class; add a test first when the behaviour isn't pinned yet).
 
 - **`MainWindow` is the known hotspot.** It owns menu, toolbar, status bar, find, session and every command. Split
   along those seams into partial-class files or small collaborators (e.g. session save/restore, find handling,

@@ -36,14 +36,22 @@ internal sealed class SessionState
 /// </summary>
 internal static class Session
 {
-    private static readonly string Folder = System.IO.Path.GetDirectoryName(AppSettings.FilePath)!;
-    private static readonly string StateFile = System.IO.Path.Combine(Folder, "session.json");
-    private static readonly string BufferFolder = System.IO.Path.Combine(Folder, "buffers");
     private static FileStream? ownerLock;
 
-    /// <summary>Takes ownership of the session; false when another instance has it.</summary>
+    private static string Folder => AppSettings.DataFolder;
+
+    private static string StateFile => System.IO.Path.Combine(Folder, "session.json");
+
+    private static string BufferFolder => System.IO.Path.Combine(Folder, "buffers");
+
+    /// <summary>Takes ownership of the session; false when another instance (or window) has it.</summary>
     public static bool TryClaim()
     {
+        if (ownerLock is not null)
+        {
+            return false;
+        }
+
         try
         {
             Directory.CreateDirectory(Folder);
@@ -54,6 +62,13 @@ internal static class Session
         {
             return false;
         }
+    }
+
+    /// <summary>Gives up ownership, so another instance can take the session.</summary>
+    public static void Release()
+    {
+        ownerLock?.Dispose();
+        ownerLock = null;
     }
 
     public static SessionState? Load()

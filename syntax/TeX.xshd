@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TeX / LaTeX. Replaces AvaloniaEdit's built-in one, which is in the old V1 format and does not load.
+     Colours here are placeholders; SyntaxTheme recolours by name. -->
+<SyntaxDefinition name="TeX" extensions=".tex;.sty" xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  <Color name="Comment" foreground="#708090" />
+  <Color name="Math" foreground="#000000" />
+  <Color name="Command" foreground="#191970" />
+  <Color name="Section" foreground="#191970" fontWeight="bold" />
+  <Color name="Brace" foreground="#008000" />
+
+  <RuleSet>
+    <Span color="Comment">
+      <Begin>(?&lt;!\\)%</Begin>
+    </Span>
+    <Span color="Math" multiline="true">
+      <Begin>\$\$</Begin>
+      <End>\$\$</End>
+    </Span>
+    <Span color="Math" multiline="true">
+      <Begin>\\\[</Begin>
+      <End>\\\]</End>
+    </Span>
+    <Span color="Math">
+      <Begin>(?&lt;!\\)\$</Begin>
+      <End>(?&lt;!\\)\$</End>
+    </Span>
+
+    <Rule color="Section">\\(part|chapter|section|subsection|subsubsection|paragraph|title|documentclass|begin|end)\b\*?</Rule>
+    <Rule color="Command">\\([A-Za-z@]+|.)</Rule>
+    <Rule color="Brace">[{}\[\]]</Rule>
+  </RuleSet>
+</SyntaxDefinition>

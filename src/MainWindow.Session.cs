@@ -122,7 +122,7 @@ internal sealed partial class MainWindow
     /// On activation: files changed elsewhere are reloaded silently, unless they have unsaved changes here,
     /// in which case the person chooses.
     /// </summary>
-    private async Task CheckDiskChangesAsync()
+    internal async Task CheckDiskChangesAsync()
     {
         if (checkingDisk)
         {

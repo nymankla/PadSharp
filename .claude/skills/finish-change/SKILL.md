@@ -20,7 +20,8 @@ files by name; never `git add -A` or `git add .`.
 
 | If the diff... | Then also |
 |---|---|
-| changes what the user sees (menu, status bar, dialog, find bar, prompt text, shortcut) | The **Behaviour** section of `CLAUDE.md` |
+| changes anything in `src/` | Tests in the file's `<File>Tests` class (a new file gets a new test class; `ConventionTests` checks). A bug fix gets a test that fails without it |
+| changes what the user sees (menu, status bar, dialog, find bar, prompt text, shortcut) | The **Behaviour** section of `CLAUDE.md`, and `README.md` when a shortcut or feature changes |
 | changes how a part works (a file in the Architecture list, a new file, settings or session format) | The **Architecture** section of `CLAUDE.md` |
 | adds a setting | `AppSettings` property with a default, clamping in `Sanitize`, a control in `SettingsWindow`, applied in `Document.ApplySettings` or `MainWindow.ApplyTheme` |
 | changes `SessionState`/`SessionTab` | Old `session.json` files must still load (new properties get defaults); never lose a buffer |
@@ -34,10 +35,11 @@ files by name; never `git add -A` or `git add .`.
 Close any running PadSharp first: it locks `bin/Debug` and the build fails with MSB3061.
 
 ```powershell
-dotnet build
+dotnet build PadSharp.slnx
+dotnet test
 ```
 
-The build is the lint: warnings are errors, analyzers at `Recommended`, code style enforced, and the trim/AOT
+Report the test totals. The build is the lint: warnings are errors, analyzers at `Recommended`, code style enforced, and the trim/AOT
 analyzers run on every build. Fix the code; don't suppress a rule or edit `.editorconfig` to get around it.
 
 For a change to file I/O, encodings or AOT-sensitive code, also publish once:

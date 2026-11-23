@@ -12,13 +12,17 @@ Windows-specific call is the optional one that puts the `--screenshot` window be
 
 ## Commands
 
-There is no test project.
-
-- Build (this is also the lint): `dotnet build`
+- Build (this is also the lint): `dotnet build PadSharp.slnx` (app + tests)
+- Test: `dotnet test` (xUnit v3 on Microsoft.Testing.Platform, see `global.json`)
 - Run: `dotnet run --project PadSharp.csproj -- [files...]`
 - Visual check without taking focus: `bin/Debug/net11.0/PadSharp.exe [files...] --screenshot out.png`
-  (renders ~120 frames behind other windows, saves a PNG of the window, exits 0). This is how changes are
-  verified. Only the main window is captured, not menus or dialogs.
+  (renders ~120 frames behind other windows, saves a PNG of the window, exits 0). Only the main window is
+  captured, not menus or dialogs.
+- Launcher: `dist/ed.cmd` (Windows) and `dist/ed` (POSIX, LF only, see `.gitattributes`) are copied next to the
+  program on build/publish for the matching target. They find the program in their own folder, so users may
+  rename them; keep it that way.
+- Portable / throwaway data: set `PADSHARP_DATA=<folder>` to keep settings and the session there instead of
+  `%APPDATA%\PadSharp`.
 - Native AOT release: `dotnet publish PadSharp.csproj -c Release -r win-x64` (or `linux-x64`, `osx-arm64`).
 
 A running PadSharp locks `bin/Debug` and makes the build fail with MSB3061; close it first.
@@ -37,6 +41,27 @@ normal build, so AOT-unsafe code fails `dotnet build`. Consequences:
 On publish, the ILC prints two notes about `CreateTargetForHwnd` in Avalonia.Win32's COM vtables; they come
 from the package and are harmless.
 
+## Tests (required)
+
+**All code must have a test class testing it.** Every file in `src/` has a matching test class in
+`tests/PadSharp.Tests/`, named after the file: `TextFile.cs` → `TextFileTests`, `MainWindow.Find.cs` →
+`MainWindowFindTests`, `EditorStyles.axaml.cs` → `EditorStylesTests`. `ConventionTests` fails the run when one
+is missing, and also when a `syntax/*.xshd` backs no language. A new or changed behaviour gets a test in the
+same change; a bug fix gets a test that fails without the fix.
+
+- Tests run the real `App` on Avalonia's headless platform (`TestSupport.cs`). Use `[AvaloniaFact]` /
+  `[AvaloniaTheory]` for **every** test, also pure logic: a plain `[Fact]` touching any Avalonia type binds the
+  UI dispatcher to the wrong thread and breaks later tests. Tests run one at a time (shared static state).
+- Use `Sandbox` for anything touching files, settings or the session: it points `AppSettings.DataFolder` at a
+  temp folder (the module initializer already keeps tests away from the real `%APPDATA%`), opens main windows
+  with `sandbox.Open(...)`, and restores the look on dispose.
+- Drive the UI like a person: `window.Press(Key.N, RawInputModifiers.Control)`, `window.Type("text")`, menu
+  items by header, dialogs via `window.OwnedWindows`. `MainWindow` exposes `Current`, `Documents`, `FindBar`
+  and `StatusParts` for assertions; prefer those over adding more test-only members.
+- Theory data can't use the app's internal enums as parameter types; pass `(int)` and cast back.
+- Not covered by automated tests (check by hand or with `--screenshot`): the file pickers, the status-bar
+  picker pop-ups, drag and drop, and the `--screenshot` run itself.
+
 ## Architecture
 
 The UI is built in code (no XAML views); `App.cs` sets up the Fluent theme and theme-resource overrides,
@@ -53,7 +78,7 @@ menu checks, title). Put new code in the file of its seam.
 - **Languages** (`Languages.cs`): catalog of languages (name, extensions, highlighting definition name) and detection (extension, then first line: shebang, `<?xml`, ...).
   Save As re-detects from the new extension; reload keeps the current language.
 - **Syntax colours** (`SyntaxTheme.cs` + `syntax/*.xshd`): every definition — AvaloniaEdit's built-ins and
-  the embedded custom ones (Batch, INI, Rust, Shell, YAML) — is re-registered lazily with colours chosen by matching
+  the embedded custom ones (Batch, INI, Rust, Shell, TeX, YAML) — is re-registered lazily with colours chosen by matching
   the xshd colour *names* to roles in the current `SyntaxPalette`. New custom languages: add an `.xshd`
   (embedded via the csproj glob), list its name in `SyntaxTheme.Custom`, and add a `Language` entry.
 - **Theming** (`Look.cs`): `Palettes.Dark`/`Light` (surfaces + syntax) and `Palettes.Accents` (gradient
@@ -104,4 +129,4 @@ Shows `3 of 12`, `No results`, or `Replaced N`.
   reload keeps the language. The Save As type list starts with the current language.
 - C and TypeScript borrow the C++ and JavaScript definitions.
 
-**Zoom**: Zoom In/Out (Ctrl+Mouse Wheel, Ctrl+Plus/Minus), Reset Zoom (Ctrl+0); one point per step, range -10..+60.
+**Zoom**: Zoom In/Out (Ctrl+Mouse Wheel, Ctrl+Numpad +/−), Reset Zoom (Ctrl+0); one point per step, range -10..+60.

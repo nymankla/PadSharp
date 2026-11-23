@@ -51,9 +51,31 @@
     <PackageReference Include="Avalonia.AvaloniaEdit" Version="12.0.0" />
   </ItemGroup>
 
+  <!--
+    The `ed` launcher next to the program: ed.cmd for Windows targets, the POSIX `ed` script for Linux and macOS.
+    A build without a runtime identifier gets the one for the OS it is built on.
+  -->
+  <PropertyGroup>
+    <LauncherTarget>$(RuntimeIdentifier)</LauncherTarget>
+    <LauncherTarget Condition="'$(LauncherTarget)' == '' and $([MSBuild]::IsOSPlatform('Windows'))">win</LauncherTarget>
+    <LauncherScript>dist/ed</LauncherScript>
+    <LauncherScript Condition="$(LauncherTarget.StartsWith('win'))">dist/ed.cmd</LauncherScript>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Update="$(LauncherScript)" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- Copying loses the executable bit; restore it where the OS has one (cross-publishing from Windows can't). -->
+  <Target Name="MakeLauncherExecutable" AfterTargets="Publish" Condition="'$(LauncherScript)' == 'dist/ed' and !$([MSBuild]::IsOSPlatform('Windows'))">
+    <Exec Command="chmod +x &quot;$(PublishDir)ed&quot;" />
+  </Target>
+
   <ItemGroup>
     <EmbeddedResource Include="syntax/*.xshd" LogicalName="PadSharp.Syntax.%(Filename)%(Extension)" />
-    <Compile Remove="bin/**;obj/**;.claude/**" />
+    <Compile Remove="bin/**;obj/**;.claude/**;tests/**" />
+    <None Remove="tests/**" />
+    <InternalsVisibleTo Include="PadSharp.Tests" />
   </ItemGroup>
 
 </Project>

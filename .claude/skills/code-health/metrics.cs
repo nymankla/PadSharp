@@ -26,7 +26,7 @@ string? jsonPath = jsonAt >= 0 && jsonAt + 1 < args.Length ? args[jsonAt + 1] : 
     ("Parameters", m => m.Parameters, 3, 4),
 ];
 const int TypeGood = 199, TypeAcceptable = 500, Window = 10;
-string[] skipped = ["bin", "obj", "publish", "artifacts", ".claude", ".git", ".vs"];
+string[] skipped = ["bin", "obj", "publish", "artifacts", ".claude", ".git", ".vs", "tests"];
 
 var methods = new List<Method>();
 var types = new List<TypeInfo>();

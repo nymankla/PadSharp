@@ -30,9 +30,16 @@ internal sealed class AppSettings
 
     public bool ShowWhitespace { get; set; }
 
+    /// <summary>
+    /// The folder for settings and the session: <c>PADSHARP_DATA</c> when set (a portable copy, or tests),
+    /// otherwise e.g. %APPDATA%\PadSharp on Windows.
+    /// </summary>
+    public static string DataFolder { get; set; } = Environment.GetEnvironmentVariable("PADSHARP_DATA") is { Length: > 0 } custom
+        ? Path.GetFullPath(custom)
+        : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PadSharp");
+
     /// <summary>Where settings are stored, e.g. %APPDATA%\PadSharp\settings.json on Windows.</summary>
-    public static string FilePath { get; } =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PadSharp", "settings.json");
+    public static string FilePath => Path.Combine(DataFolder, "settings.json");
 
     /// <summary>Reads the saved settings; a missing or damaged file gives the defaults.</summary>
     public static AppSettings Load()

@@ -61,6 +61,9 @@ internal sealed partial class MainWindow : Window
     private bool sessionPending;
     private bool checkingDisk;
 
+    /// <summary>Messages raised before the window is shown (e.g. a missing file on the command line).</summary>
+    private readonly List<(string Title, string Message)> pendingMessages = [];
+
     public MainWindow(IReadOnlyList<string> files, string? screenshotPath, AppSettings settings, Action<int> shutdown)
     {
         this.screenshotPath = screenshotPath;
@@ -137,7 +140,18 @@ internal sealed partial class MainWindow : Window
         }
     }
 
-    private Document? Current => (tabs.SelectedItem as TabItem)?.Tag as Document;
+    /// <summary>The tab in front.</summary>
+    internal Document? Current => (tabs.SelectedItem as TabItem)?.Tag as Document;
+
+    /// <summary>Every open tab, in the order they were opened.</summary>
+    internal IReadOnlyList<Document> Documents => documents;
+
+    /// <summary>The find bar (hidden until Ctrl+F / Ctrl+H).</summary>
+    internal FindBar FindBar => findBar;
+
+    /// <summary>The status-bar texts, left to right: language, position, lines, line endings, encoding.</summary>
+    internal IReadOnlyList<string> StatusParts =>
+        [.. new[] { languageText, positionText, linesText, eolText, encodingText }.Select(t => t.Text ?? string.Empty)];
 
     protected override void OnOpened(EventArgs e)
     {
@@ -150,6 +164,26 @@ internal sealed partial class MainWindow : Window
         else
         {
             Current?.Editor.TextArea.Focus();
+        }
+
+        foreach ((string title, string message) in pendingMessages)
+        {
+            _ = Dialogs.AskAsync(this, title, message, "OK");
+        }
+
+        pendingMessages.Clear();
+    }
+
+    /// <summary>Shows a message now, or once the window is open (a dialog needs a visible owner).</summary>
+    private void ShowMessage(string title, string message)
+    {
+        if (IsVisible)
+        {
+            _ = Dialogs.AskAsync(this, title, message, "OK");
+        }
+        else
+        {
+            pendingMessages.Add((title, message));
         }
     }
 
@@ -170,6 +204,16 @@ internal sealed partial class MainWindow : Window
         settingsWindow?.Close();
 
         base.OnClosing(e);
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        base.OnClosed(e);
+        sessionTimer.Stop();
+        if (hotExit)
+        {
+            Session.Release();
+        }
     }
 
     private static string FormatNumber(long value) => value.ToString("N0", CultureInfo.CurrentCulture);
@@ -529,7 +573,7 @@ internal sealed partial class MainWindow : Window
 
             if (!File.Exists(path))
             {
-                _ = Dialogs.AskAsync(this, "Open", $"\"{path}\" doesn't exist.", "OK");
+                ShowMessage("Open", $"\"{path}\" doesn't exist.");
                 continue;
             }
 
@@ -541,7 +585,7 @@ internal sealed partial class MainWindow : Window
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                _ = Dialogs.AskAsync(this, "Open", $"Cannot open file \"{path}\".\n{ex.Message}", "OK");
+                ShowMessage("Open", $"Cannot open file \"{path}\".\n{ex.Message}");
                 continue;
             }
 

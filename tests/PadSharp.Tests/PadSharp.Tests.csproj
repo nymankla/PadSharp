@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net11.0</TargetFramework>
+    <LangVersion>15</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>PadSharp.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+
+    <!-- Same lint as the app: warnings are errors, analyzers and code style enforced. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <AnalysisMode>Recommended</AnalysisMode>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!--
+      CS1591: test methods need no XML docs. CA1515: xUnit needs public test classes.
+      CA2007: tests run on the UI dispatcher, where ConfigureAwait(false) would be wrong.
+    -->
+    <NoWarn>$(NoWarn);CS1591;CA1515;CA2007</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\PadSharp.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Avalonia.Headless.XUnit 12.1.6 is built against xUnit v3 3.2.x, so xUnit is pinned to match. -->
+    <PackageReference Include="xunit.v3.mtp-v2" Version="3.2.2" />
+    <PackageReference Include="Avalonia.Headless.XUnit" Version="12.1.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

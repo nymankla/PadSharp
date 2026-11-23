@@ -20,11 +20,11 @@ internal static class SyntaxTheme
         ("C#", "CSharp-Mode.xshd"), ("CSS", "CSS-Mode.xshd"), ("HTML", "HTML-Mode.xshd"), ("Java", "Java-Mode.xshd"),
         ("JavaScript", "JavaScript-Mode.xshd"), ("Json", "Json.xshd"), ("MarkDown", "MarkDown-Mode.xshd"),
         ("Patch", "Patch-Mode.xshd"), ("PHP", "PHP-Mode.xshd"), ("PowerShell", "PowerShell.xshd"),
-        ("Python", "Python-Mode.xshd"), ("TeX", "Tex-Mode.xshd"), ("TSQL", "TSQL-Mode.xshd"), ("VB", "VB-Mode.xshd"),
+        ("Python", "Python-Mode.xshd"), ("TSQL", "TSQL-Mode.xshd"), ("VB", "VB-Mode.xshd"),
         ("XML", "XML-Mode.xshd"), ("XmlDoc", "XmlDoc.xshd"),
     ];
 
-    private static readonly string[] Custom = ["Batch", "INI", "Rust", "Shell", "YAML"];
+    private static readonly string[] Custom = ["Batch", "INI", "Rust", "Shell", "TeX", "YAML"];
 
     private static readonly XmlReaderSettings Safe = new() { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null };
     private static bool registered;
