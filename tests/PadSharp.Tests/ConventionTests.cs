@@ -5,7 +5,7 @@ namespace PadSharp.Tests;
 /// <summary>Holds the repository to the rule in CLAUDE.md: every source file has a test class.</summary>
 public sealed class ConventionTests
 {
-    private static string RepoRoot()
+    internal static string RepoRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "PadSharp.slnx")))

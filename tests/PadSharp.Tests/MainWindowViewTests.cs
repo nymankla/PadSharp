@@ -110,8 +110,10 @@ public sealed class MainWindowViewTests : IDisposable
 
         window.Press(Key.F1);
         Window about = window.Dialog();
-        Assert.Equal("0.1.0", MainWindow.Version);
-        Assert.Contains(about.All<TextBlock>(), t => t.Text?.StartsWith("PadSharp 0.1.0\n", StringComparison.Ordinal) == true);
+        string version = System.Xml.Linq.XDocument.Load(Path.Combine(ConventionTests.RepoRoot(), "PadSharp.csproj"))
+            .Descendants("Version").Single().Value;
+        Assert.Equal(version, MainWindow.Version);
+        Assert.Contains(about.All<TextBlock>(), t => t.Text?.StartsWith($"PadSharp {version}\n", StringComparison.Ordinal) == true);
         about.Click("OK");
 
         window.Press(Key.OemComma, RawInputModifiers.Control);
