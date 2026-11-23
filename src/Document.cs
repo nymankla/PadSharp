@@ -7,6 +7,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using AvaloniaEdit;
 using AvaloniaEdit.Document;
+using AvaloniaEdit.Editing;
 
 namespace PadSharp;
 
@@ -20,43 +21,53 @@ internal sealed class Document
     public Document(int untitledNumber)
     {
         UntitledNumber = untitledNumber;
-        Editor = new TextEditor
-        {
-            FontFamily = Look.EditorFontFor(Look.DefaultFontName),
-            FontSize = Look.PtToDip(Look.DefaultFontSizePt),
-            Background = Look.EditorBack,
-            Foreground = Look.EditorFore,
-            ShowLineNumbers = false,
-            WordWrap = false,
-            HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
-            VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Visible,
-        };
-        Editor.Options.IndentationSize = Look.DefaultTabWidth;
-        Editor.Options.ConvertTabsToSpaces = false;
-        Editor.Options.EnableHyperlinks = false;
-        Editor.Options.EnableEmailHyperlinks = false;
-        Editor.Options.HighlightCurrentLine = true;
-        Editor.Options.AllowToggleOverstrikeMode = true;
-        Editor.TextArea.TextView.CurrentLineBackground = Look.CurrentLineBack;
-        Editor.TextArea.TextView.CurrentLineBorder = new Pen(Look.CurrentLineBack);
-        Editor.TextArea.SelectionBrush = Look.SelectionBack;
-        Editor.TextArea.SelectionForeground = null;
-        Editor.TextArea.SelectionBorder = null;
-        Editor.TextArea.SelectionCornerRadius = 3;
-        Editor.TextArea.Caret.CaretBrush = Look.Caret;
-        Editor.Padding = new Thickness(0, 6, 0, 0);
-
+        Editor = CreateEditor();
         Gutter = new LineNumberGutter();
         Editor.TextArea.LeftMargins.Insert(0, Gutter);
         Editor.TextArea.Caret.PositionChanged += (_, _) => Gutter.CurrentLine = Editor.TextArea.Caret.Line;
-
         Editor.Document.TextChanged += (_, _) =>
         {
             Revision++;
             Changed?.Invoke(this, EventArgs.Empty);
         };
         Editor.Document.UndoStack.PropertyChanged += OnUndoStackChanged;
+        Tab = new TabItem { Header = CreateHeader(), Content = Editor, Tag = this };
+        UpdateTitle();
+    }
 
+    /// <summary>The text area with the app's defaults and shared theme brushes (preferences come later via ApplySettings).</summary>
+    private static TextEditor CreateEditor()
+    {
+        var editor = new TextEditor
+        {
+            FontFamily = Look.EditorFontFor(Look.DefaultFontName),
+            FontSize = Look.PtToDip(Look.DefaultFontSizePt),
+            Background = Look.EditorBack,
+            Foreground = Look.EditorFore,
+            ShowLineNumbers = false,
+            HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
+            VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Visible,
+            Padding = new Thickness(0, 6, 0, 0),
+        };
+        editor.Options.IndentationSize = Look.DefaultTabWidth;
+        editor.Options.EnableHyperlinks = false;
+        editor.Options.EnableEmailHyperlinks = false;
+        editor.Options.AllowToggleOverstrikeMode = true;
+        editor.Options.HighlightCurrentLine = true;
+        TextArea area = editor.TextArea;
+        area.TextView.CurrentLineBackground = Look.CurrentLineBack;
+        area.TextView.CurrentLineBorder = new Pen(Look.CurrentLineBack);
+        area.SelectionBrush = Look.SelectionBack;
+        area.SelectionForeground = null;
+        area.SelectionBorder = null;
+        area.SelectionCornerRadius = 3;
+        area.Caret.CaretBrush = Look.Caret;
+        return editor;
+    }
+
+    /// <summary>The tab header: saved/unsaved dot, title, and a close button; a middle click also closes.</summary>
+    private StackPanel CreateHeader()
+    {
         var close = new Button
         {
             Content = new Avalonia.Controls.Shapes.Path
@@ -82,8 +93,7 @@ internal sealed class Document
                 CloseRequested?.Invoke(this, EventArgs.Empty);
             }
         };
-        Tab = new TabItem { Header = header, Content = Editor, Tag = this };
-        UpdateTitle();
+        return header;
     }
 
     /// <summary>Raised when the text or the saved state changes.</summary>
@@ -191,25 +201,26 @@ internal sealed class Document
     }
 
     /// <summary>
-    /// Brings back a tab's unsaved text from the session; it stays marked as changed. <paramref name="diskStamp"/> is
+    /// Brings back a tab's unsaved text from the session; it stays marked as changed. The tab's saved disk stamp is
     /// the file's time when the session was saved, so a change made while PadSharp was closed is still noticed.
     /// </summary>
-    public void Restore(string? path, string text, TextEncodingKind encoding, EolKind eol, Language language, int caret, DateTime? diskStamp = null)
+    public void Restore(SessionTab tab, string text, Language language)
     {
+        ArgumentNullException.ThrowIfNull(tab);
         ArgumentNullException.ThrowIfNull(text);
-        FilePath = path;
-        if (path is not null)
+        FilePath = tab.Path;
+        if (tab.Path is { } path)
         {
             UntitledNumber = 0;
-            DiskStamp = diskStamp ?? (File.Exists(path) ? File.GetLastWriteTimeUtc(path) : null);
+            DiskStamp = tab.DiskStamp ?? (File.Exists(path) ? File.GetLastWriteTimeUtc(path) : null);
         }
 
-        Encoding = encoding;
-        Eol = eol;
+        Encoding = tab.Encoding;
+        Eol = tab.Eol;
         Language = language;
         Editor.Document.Text = text;
         Editor.Document.UndoStack.ClearAll();
-        Editor.CaretOffset = Math.Clamp(caret, 0, text.Length);
+        Editor.CaretOffset = Math.Clamp(tab.Caret, 0, text.Length);
         MarkDirty();
     }
 

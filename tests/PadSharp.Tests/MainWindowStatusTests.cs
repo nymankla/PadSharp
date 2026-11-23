@@ -50,6 +50,17 @@ public sealed class MainWindowStatusTests : IDisposable
     }
 
     [AvaloniaFact]
+    public void PickerChoicesNameMarkAndPickEachValue()
+    {
+        EolKind? picked = null;
+        var choices = MainWindow.Choices([EolKind.Windows, EolKind.Unix], TextFile.EolShortName, k => k == EolKind.Unix, k => picked = k).ToList();
+
+        Assert.Equal([("CRLF", false), ("LF", true)], choices.Select(c => (c.Name, c.Current)));
+        choices[0].Pick();
+        Assert.Equal(EolKind.Windows, picked);
+    }
+
+    [AvaloniaFact]
     public void InsertTogglesOvertype()
     {
         MainWindow window = sandbox.Open();

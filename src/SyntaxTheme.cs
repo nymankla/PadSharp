@@ -95,21 +95,10 @@ internal static class SyntaxTheme
                 Restyle(color, color.Name, Look.Syntax.Keyword);
                 break;
             case XshdRuleSet ruleSet:
-                foreach (XshdElement child in ruleSet.Elements)
-                {
-                    Visit(child);
-                }
-
+                ruleSet.Elements.ToList().ForEach(Visit);
                 break;
             case XshdSpan span:
-                Inline(span.SpanColorReference, Look.Syntax.String);
-                Inline(span.BeginColorReference, Look.Syntax.Operator);
-                Inline(span.EndColorReference, Look.Syntax.Operator);
-                if (span.RuleSetReference.InlineElement is { } inner)
-                {
-                    Visit(inner);
-                }
-
+                VisitSpan(span);
                 break;
             case XshdKeywords keywords:
                 Inline(keywords.ColorReference, Look.Syntax.Keyword);
@@ -119,6 +108,18 @@ internal static class SyntaxTheme
                 break;
             default:
                 break;
+        }
+    }
+
+    /// <summary>A span's own colour defaults to the string role, its begin and end markers to the operator role.</summary>
+    private static void VisitSpan(XshdSpan span)
+    {
+        Inline(span.SpanColorReference, Look.Syntax.String);
+        Inline(span.BeginColorReference, Look.Syntax.Operator);
+        Inline(span.EndColorReference, Look.Syntax.Operator);
+        if (span.RuleSetReference.InlineElement is { } inner)
+        {
+            Visit(inner);
         }
     }
 

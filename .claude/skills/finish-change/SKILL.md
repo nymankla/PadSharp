@@ -62,6 +62,8 @@ Then read the PNG. Only the main window is captured, not menus or dialogs, and `
 the session. Say plainly what could not be seen this way (dialogs, menus, the find bar, hot exit) and was not
 verified.
 
+`dotnet test` includes the code-health gate (`CodeHealthTests`). If it fails, split the method or type it names,
+following the `code-health` skill. Add an exception only with a written reason, and never raise a limit.
 Optionally, run `code-health` and compare with its last baseline when the change touched `MainWindow` or added
 a lot of code.
 

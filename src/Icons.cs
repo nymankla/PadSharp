@@ -53,26 +53,21 @@ internal static class Icons
             RadiusY = 8 * s,
             Fill = Look.LogoGradient,
         });
-        canvas.Children.Add(new Path
-        {
-            Data = Geometry.Parse("M8,10 H24 M8,16 H20 M8,22 H14"),
-            Stroke = Brushes.White,
-            StrokeThickness = 3,
-            StrokeLineCap = PenLineCap.Round,
-            RenderTransform = new ScaleTransform(s, s),
-            RenderTransformOrigin = new RelativePoint(0, 0, RelativeUnit.Absolute),
-        });
-        canvas.Children.Add(new Path
-        {
-            Data = Geometry.Parse("M19,19 V25"),
-            Stroke = new SolidColorBrush(Color.FromArgb(0xC0, 0xFF, 0xFF, 0xFF)),
-            StrokeThickness = 2.5,
-            StrokeLineCap = PenLineCap.Round,
-            RenderTransform = new ScaleTransform(s, s),
-            RenderTransformOrigin = new RelativePoint(0, 0, RelativeUnit.Absolute),
-        });
+        canvas.Children.Add(LogoStroke("M8,10 H24 M8,16 H20 M8,22 H14", Brushes.White, 3, s));
+        canvas.Children.Add(LogoStroke("M19,19 V25", new SolidColorBrush(Color.FromArgb(0xC0, 0xFF, 0xFF, 0xFF)), 2.5, s));
         return canvas;
     }
+
+    /// <summary>A rounded stroke drawn on the logo's 32-unit grid, scaled to its size.</summary>
+    private static Path LogoStroke(string data, IBrush stroke, double thickness, double scale) => new()
+    {
+        Data = Geometry.Parse(data),
+        Stroke = stroke,
+        StrokeThickness = thickness,
+        StrokeLineCap = PenLineCap.Round,
+        RenderTransform = new ScaleTransform(scale, scale),
+        RenderTransformOrigin = new RelativePoint(0, 0, RelativeUnit.Absolute),
+    };
 
     /// <summary>A round sample of an accent's gradient.</summary>
     public static Ellipse Swatch(Accent accent, double size)

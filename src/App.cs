@@ -30,8 +30,45 @@ internal sealed class App : Application
         fluent.Palettes[ThemeVariant.Light] = lightFluent;
         Styles.Add(fluent);
         Styles.Add(new EditorStyles());
+        AddThemeResources();
+        AddTabAndMenuStyles();
+    }
 
-        // Theme resources the Fluent templates read: tabs blend into the editor when selected.
+    public override void OnFrameworkInitializationCompleted()
+    {
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            (IReadOnlyList<string> files, string? screenshot) = ParseArguments(desktop.Args ?? []);
+            desktop.ShutdownMode = ShutdownMode.OnMainWindowClose;
+            desktop.MainWindow = new MainWindow(files, screenshot, AppSettings.Load(), code => desktop.Shutdown(code));
+        }
+
+        base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>Files to open, and the picture to save for <c>--screenshot file.png</c>.</summary>
+    internal static (IReadOnlyList<string> Files, string? Screenshot) ParseArguments(IReadOnlyList<string> args)
+    {
+        string? screenshot = null;
+        var files = new List<string>();
+        for (int i = 0; i < args.Count; i++)
+        {
+            if (args[i] == "--screenshot" && i + 1 < args.Count)
+            {
+                screenshot = Path.GetFullPath(args[++i]);
+            }
+            else
+            {
+                files.Add(args[i]);
+            }
+        }
+
+        return (files, screenshot);
+    }
+
+    /// <summary>Theme resources the Fluent templates read: tabs blend into the editor when selected.</summary>
+    private void AddThemeResources()
+    {
         Resources["TabItemHeaderBackgroundSelected"] = Look.EditorBack;
         Resources["TabItemHeaderBackgroundSelectedPointerOver"] = Look.EditorBack;
         Resources["TabItemHeaderBackgroundSelectedPressed"] = Look.EditorBack;
@@ -41,7 +78,10 @@ internal sealed class App : Application
         Resources["TabItemHeaderForegroundSelected"] = Look.EditorFore;
         Resources["TabItemHeaderForegroundUnselected"] = Look.MutedFore;
         Resources["ButtonBackgroundPointerOver"] = Look.HoverBack;
+    }
 
+    private void AddTabAndMenuStyles()
+    {
         Styles.Add(new Style(x => x.OfType<TabItem>())
         {
             Setters =
@@ -65,32 +105,6 @@ internal sealed class App : Application
         {
             Setters = { new Setter(TemplatedControl.FontSizeProperty, 12.5) },
         });
-    }
-
-    public override void OnFrameworkInitializationCompleted()
-    {
-        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-        {
-            string? screenshot = null;
-            var files = new List<string>();
-            string[] args = desktop.Args ?? [];
-            for (int i = 0; i < args.Length; i++)
-            {
-                if (args[i] == "--screenshot" && i + 1 < args.Length)
-                {
-                    screenshot = Path.GetFullPath(args[++i]);
-                }
-                else
-                {
-                    files.Add(args[i]);
-                }
-            }
-
-            desktop.ShutdownMode = ShutdownMode.OnMainWindowClose;
-            desktop.MainWindow = new MainWindow(files, screenshot, AppSettings.Load(), code => desktop.Shutdown(code));
-        }
-
-        base.OnFrameworkInitializationCompleted();
     }
 
     /// <summary>Fluent's own colours (menus, inputs, flyouts) derived from one of our palettes.</summary>

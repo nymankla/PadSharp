@@ -17,15 +17,16 @@ internal enum FindAction
     ReplaceAll,
 }
 
-internal sealed class FindRequestEventArgs(FindAction action, string query, string replacement, SearchOptions options) : EventArgs
+internal sealed class FindRequestEventArgs(FindAction action, SearchQuery search, string replacement) : EventArgs
 {
     public FindAction Action { get; } = action;
 
-    public string Query { get; } = query;
+    /// <summary>The query with its options (case, whole word, regex), as set in the bar.</summary>
+    public SearchQuery Search { get; } = search;
+
+    public string Query => Search.Text;
 
     public string Replacement { get; } = replacement;
-
-    public SearchOptions Options { get; } = options;
 }
 
 /// <summary>The find / replace bar docked under the editor. Enter finds next, Shift+Enter previous, Esc closes.</summary>
@@ -46,27 +47,7 @@ internal sealed class FindBar : Border
         BorderThickness = new Thickness(0, 1, 0, 0);
         Padding = new Thickness(8, 6);
         IsVisible = false;
-
-        Button previous = Small("↑", "Previous match (Shift+Enter)", () => Raise(FindAction.Previous));
-        Button next = Small("↓", "Next match (Enter)", () => Raise(FindAction.Next));
-        Button close = Small("✕", "Close (Esc)", Hide);
-        Button replace = Small("Replace", "Replace (Enter)", () => Raise(FindAction.Replace));
-        Button replaceAll = Small("All", "Replace all (Ctrl+Alt+Enter)", () => Raise(FindAction.ReplaceAll));
-
-        var findRow = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 4,
-            Children = { findBox, matchCase, wholeWord, regex, previous, next, statusText },
-        };
-        replaceRow.Children.AddRange([replaceBox, replace, replaceAll]);
-
-        var rows = new StackPanel { Spacing = 4, Children = { findRow, replaceRow } };
-        var dock = new DockPanel();
-        DockPanel.SetDock(close, Dock.Right);
-        close.VerticalAlignment = VerticalAlignment.Top;
-        dock.Children.AddRange([close, rows]);
-        Child = dock;
+        Child = BuildLayout();
 
         findBox.TextChanged += (_, _) => Raise(FindAction.Incremental);
         matchCase.IsCheckedChanged += (_, _) => Raise(FindAction.Incremental);
@@ -76,6 +57,33 @@ internal sealed class FindBar : Border
         replaceBox.KeyDown += (_, e) => OnBoxKey(e, e.KeyModifiers.HasFlag(KeyModifiers.Control | KeyModifiers.Alt) ? FindAction.ReplaceAll : FindAction.Replace);
     }
 
+    /// <summary>Find row (box, toggles, previous/next, status) over the replace row, with a close button on the right.</summary>
+    private DockPanel BuildLayout()
+    {
+        var findRow = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 4,
+            Children =
+            {
+                findBox, matchCase, wholeWord, regex,
+                Small("↑", "Previous match (Shift+Enter)", () => Raise(FindAction.Previous)),
+                Small("↓", "Next match (Enter)", () => Raise(FindAction.Next)),
+                statusText,
+            },
+        };
+        replaceRow.Children.AddRange([
+            replaceBox,
+            Small("Replace", "Replace (Enter)", () => Raise(FindAction.Replace)),
+            Small("All", "Replace all (Ctrl+Alt+Enter)", () => Raise(FindAction.ReplaceAll))]);
+
+        Button close = Small("✕", "Close (Esc)", Hide);
+        close.VerticalAlignment = VerticalAlignment.Top;
+        DockPanel.SetDock(close, Dock.Right);
+        var rows = new StackPanel { Spacing = 4, Children = { findRow, replaceRow } };
+        return new DockPanel { Children = { close, rows } };
+    }
+
     public event EventHandler<FindRequestEventArgs>? FindRequested;
 
     /// <summary>Raised when the bar closes, so the editor can take focus back.</summary>
@@ -83,8 +91,9 @@ internal sealed class FindBar : Border
 
     public string Query => findBox.Text ?? string.Empty;
 
-    public SearchOptions Options =>
-        new(matchCase.IsChecked == true, wholeWord.IsChecked == true, Backward: false, Regex: regex.IsChecked == true);
+    /// <summary>The query and the options as set in the bar (always forward; F3 and Shift+Enter set the direction).</summary>
+    public SearchQuery Search =>
+        new(Query, matchCase.IsChecked == true, wholeWord.IsChecked == true, Backward: false, Regex: regex.IsChecked == true);
 
     /// <summary>Shows the bar (with the replace row when asked), seeded with a single-line selection.</summary>
     public void Open(bool replace, string seed)
@@ -143,5 +152,5 @@ internal sealed class FindBar : Border
     }
 
     private void Raise(FindAction action) =>
-        FindRequested?.Invoke(this, new FindRequestEventArgs(action, Query, replaceBox.Text ?? string.Empty, Options));
+        FindRequested?.Invoke(this, new FindRequestEventArgs(action, Search, replaceBox.Text ?? string.Empty));
 }

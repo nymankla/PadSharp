@@ -25,6 +25,17 @@ public sealed class AppTests
     }
 
     [AvaloniaFact]
+    public void ArgumentsAreFilesExceptForTheScreenshotOption()
+    {
+        (IReadOnlyList<string> files, string? screenshot) = App.ParseArguments(["a.txt", "--screenshot", "out.png", "b.md"]);
+
+        Assert.Equal(["a.txt", "b.md"], files);
+        Assert.Equal(Path.GetFullPath("out.png"), screenshot);
+        Assert.Null(App.ParseArguments(["--screenshot"]).Screenshot);
+        Assert.Equal(["--screenshot"], App.ParseArguments(["--screenshot"]).Files);
+    }
+
+    [AvaloniaFact]
     public void SetAccentChangesFluentsAccentInBothVariants()
     {
         FluentTheme fluent = Current.Styles.OfType<FluentTheme>().Single();

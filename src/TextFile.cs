@@ -102,21 +102,23 @@ internal static class TextFile
         _ => new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
     };
 
+    /// <summary>Byte-order marks and what they mean, checked in order.</summary>
+    private static readonly (byte[] Bom, Encoding Encoding, TextEncodingKind Kind)[] Boms =
+    [
+        ([0xEF, 0xBB, 0xBF], Encoding.UTF8, TextEncodingKind.Utf8Bom),
+        ([0xFF, 0xFE], Encoding.Unicode, TextEncodingKind.Utf16LeBom),
+        ([0xFE, 0xFF], Encoding.BigEndianUnicode, TextEncodingKind.Utf16BeBom),
+    ];
+
+    /// <summary>A byte-order mark decides; otherwise valid UTF-8 is UTF-8 and anything else is ANSI.</summary>
     private static (string Text, TextEncodingKind Kind) Decode(byte[] bytes)
     {
-        if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
+        foreach ((byte[] bom, Encoding encoding, TextEncodingKind kind) in Boms)
         {
-            return (Encoding.UTF8.GetString(bytes, 3, bytes.Length - 3), TextEncodingKind.Utf8Bom);
-        }
-
-        if (bytes.Length >= 2 && bytes[0] == 0xFF && bytes[1] == 0xFE)
-        {
-            return (Encoding.Unicode.GetString(bytes, 2, bytes.Length - 2), TextEncodingKind.Utf16LeBom);
-        }
-
-        if (bytes.Length >= 2 && bytes[0] == 0xFE && bytes[1] == 0xFF)
-        {
-            return (Encoding.BigEndianUnicode.GetString(bytes, 2, bytes.Length - 2), TextEncodingKind.Utf16BeBom);
+            if (bytes.AsSpan().StartsWith(bom))
+            {
+                return (encoding.GetString(bytes, bom.Length, bytes.Length - bom.Length), kind);
+            }
         }
 
         try
@@ -133,40 +135,31 @@ internal static class TextFile
     public static bool HasMixedEol(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
-        bool crlf = false, lf = false, cr = false;
-        for (int i = 0; i < text.Length; i++)
-        {
-            if (text[i] == '\r')
-            {
-                bool pair = i + 1 < text.Length && text[i + 1] == '\n';
-                crlf |= pair;
-                cr |= !pair;
-                i += pair ? 1 : 0;
-            }
-            else if (text[i] == '\n')
-            {
-                lf = true;
-            }
-        }
-
-        return (crlf ? 1 : 0) + (lf ? 1 : 0) + (cr ? 1 : 0) > 1;
+        return Breaks(text).Distinct().Skip(1).Any();
     }
 
-    private static EolKind DetectEol(string text)
+    /// <summary>The first line break decides; a text without one is Windows (CRLF).</summary>
+    private static EolKind DetectEol(string text) => Breaks(text).DefaultIfEmpty(EolKind.Windows).First();
+
+    /// <summary>The style of every line break in the text, in order.</summary>
+    private static IEnumerable<EolKind> Breaks(string text)
     {
-        for (int i = 0; i < text.Length; i++)
+        for (int i = text.AsSpan().IndexOfAny('\r', '\n'); i >= 0; i = NextBreak(text, i))
         {
-            if (text[i] == '\r')
-            {
-                return i + 1 < text.Length && text[i + 1] == '\n' ? EolKind.Windows : EolKind.Macintosh;
-            }
-
-            if (text[i] == '\n')
-            {
-                return EolKind.Unix;
-            }
+            yield return KindAt(text, i);
         }
-
-        return EolKind.Windows;
     }
+
+    /// <summary>The next break after the one at <paramref name="i"/>; a CRLF pair counts once.</summary>
+    private static int NextBreak(string text, int i)
+    {
+        int from = i + (KindAt(text, i) == EolKind.Windows ? 2 : 1);
+        int next = from < text.Length ? text.AsSpan(from).IndexOfAny('\r', '\n') : -1;
+        return next < 0 ? -1 : from + next;
+    }
+
+    private static EolKind KindAt(string text, int i) =>
+        text[i] == '\n' ? EolKind.Unix
+        : i + 1 < text.Length && text[i + 1] == '\n' ? EolKind.Windows
+        : EolKind.Macintosh;
 }

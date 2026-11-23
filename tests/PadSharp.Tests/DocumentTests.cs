@@ -104,7 +104,7 @@ public sealed class DocumentTests : IDisposable
     public void RestoreBringsBackUnsavedText()
     {
         var untitled = new Document(5);
-        untitled.Restore(null, "draft", TextEncodingKind.Utf8Bom, EolKind.Unix, Languages.NormalText, caret: 99);
+        untitled.Restore(new SessionTab { Encoding = TextEncodingKind.Utf8Bom, Eol = EolKind.Unix, Caret = 99 }, "draft", Languages.NormalText);
 
         Assert.Equal(("draft", "Untitled-5", true), (untitled.Text, untitled.Title, untitled.IsDirty));
         Assert.Equal((TextEncodingKind.Utf8Bom, EolKind.Unix), (untitled.Encoding, untitled.Eol));
@@ -112,7 +112,7 @@ public sealed class DocumentTests : IDisposable
 
         string path = sandbox.File("f.txt", "on disk");
         var file = new Document(0);
-        file.Restore(path, "edited", TextEncodingKind.Utf8, EolKind.Windows, Languages.NormalText, caret: 2);
+        file.Restore(new SessionTab { Path = path, Caret = 2 }, "edited", Languages.NormalText);
 
         Assert.Equal((path, "edited", true, false), (file.FilePath, file.Text, file.IsDirty, file.IsChangedOnDisk));
     }
@@ -138,7 +138,7 @@ public sealed class DocumentTests : IDisposable
         DateTime before = File.GetLastWriteTimeUtc(path).AddMinutes(-5);
         var doc = new Document(0);
 
-        doc.Restore(path, "edited", TextEncodingKind.Utf8, EolKind.Windows, Languages.NormalText, 0, before);
+        doc.Restore(new SessionTab { Path = path, DiskStamp = before }, "edited", Languages.NormalText);
 
         Assert.Equal(before, doc.DiskStamp);
         Assert.True(doc.IsChangedOnDisk);

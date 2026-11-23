@@ -41,6 +41,16 @@ normal build, so AOT-unsafe code fails `dotnet build`. Consequences:
 On publish, the ILC prints two notes about `CreateTargetForHwnd` in Avalonia.Win32's COM vtables; they come
 from the package and are harmless.
 
+## Code health (enforced)
+
+`tests/PadSharp.Tests/CodeHealth/CodeHealthTests.cs` fails `dotnet test` when anything in `src/` goes over these
+limits: method ≤ 30 lines, cyclomatic ≤ 10, cognitive ≤ 15, nesting ≤ 2, parameters ≤ 4, type ≤ 500 lines per
+file, copied 10-line blocks ≤ 3 %. Fix a breach by splitting along a seam, or by turning a group of parameters into
+a record (`SearchQuery`, `SearchHit`, `SessionTab`). Only a breach that is genuinely better left alone may go into
+`CodeHealthTests.Exceptions`, and it needs a written reason. An exception whose code is back within the limits fails
+too, so the list only shrinks. Never raise a limit to make a change pass. The `code-health` skill reads the gate's
+report (`PADSHARP_CODE_HEALTH_REPORT`).
+
 ## Tests (required)
 
 **All code must have a test class testing it.** Every file in `src/` has a matching test class in
@@ -66,9 +76,11 @@ same change; a bug fix gets a test that fails without the fix.
 
 The UI is built in code (no XAML views); `App.cs` sets up the Fluent theme and theme-resource overrides,
 `MainWindow` owns the menu, toolbar, tabs, status bar and all commands. It is a partial class split by seam:
-`MainWindow.cs` (layout, menu, toolbar, file and edit commands, theme), `MainWindow.Session.cs` (hot exit and
-disk-change checks), `MainWindow.Find.cs` (acting on the find bar), `MainWindow.Status.cs` (status bar, pickers,
-menu checks, title). Put new code in the file of its seam.
+`MainWindow.cs` (construction, layout, window placement, lifetime, messages, screenshot), `.Menu.cs` (menus, toolbar,
+shortcuts, Cmd on macOS), `.Files.cs` (tabs, open, save, close, drag and drop), `.Edit.cs` (text commands, line
+endings, encoding, language, go to line), `.View.cs` (zoom, theme, accent, preferences, About), `.Find.cs` (acting
+on the find bar), `.Status.cs` (status bar, pickers, menu checks, title) and `.Session.cs` (hot exit, disk-change
+checks). Put new code in the file of its seam; a new file needs its own `<File>Tests` class.
 
 - **Document** (`Document.cs`): one tab = one `TextEditor` + `LineNumberGutter` + tab header. Holds file path,
   EOL kind, encoding, language and dirty state (undo-stack based, plus `MarkDirty` for EOL/encoding changes).

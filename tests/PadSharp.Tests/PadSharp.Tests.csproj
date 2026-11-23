@@ -31,6 +31,8 @@
     <!-- Avalonia.Headless.XUnit 12.1.6 is built against xUnit v3 3.2.x, so xUnit is pinned to match. -->
     <PackageReference Include="xunit.v3.mtp-v2" Version="3.2.2" />
     <PackageReference Include="Avalonia.Headless.XUnit" Version="12.1.6" />
+    <!-- Syntax-only metrics for the code-health gate (CodeHealth/). -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" />
   </ItemGroup>
 
   <ItemGroup>

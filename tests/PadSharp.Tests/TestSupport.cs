@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
 
@@ -121,4 +122,34 @@ internal static class Ui
 
     /// <summary>Every logical descendant of a type, in tree order.</summary>
     public static IEnumerable<T> All<T>(this ILogical root) => root.GetLogicalDescendants().OfType<T>();
+
+    /// <summary>The titles of the open tabs, in order.</summary>
+    public static string[] TabTitles(this MainWindow window) => [.. window.Documents.Select(d => d.Title)];
+
+    public static void SelectTab(this MainWindow window, Document doc)
+    {
+        window.All<TabControl>().Single().SelectedItem = doc.Tab;
+        Dispatcher.UIThread.RunJobs();
+    }
+
+    /// <summary>Runs the menu item with this header (access-key underscores included, e.g. "_Word wrap").</summary>
+    public static void RunMenu(this MainWindow window, string header)
+    {
+        window.All<MenuItem>().Single(m => m.Header as string == header).Command!.Execute(null);
+        Dispatcher.UIThread.RunJobs();
+    }
+
+    /// <summary>The one dialog the window has open.</summary>
+    public static Window Dialog(this Window owner)
+    {
+        Dispatcher.UIThread.RunJobs();
+        return Assert.Single(owner.OwnedWindows);
+    }
+
+    /// <summary>Clicks the button with this label.</summary>
+    public static void Click(this Window dialog, string label)
+    {
+        dialog.All<Button>().Single(b => b.Content as string == label).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Dispatcher.UIThread.RunJobs();
+    }
 }

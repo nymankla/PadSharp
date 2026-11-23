@@ -33,6 +33,9 @@ A running PadSharp locks `bin/Debug`, so close it before building.
   without the fix. Tests run the real app on Avalonia's headless platform; see `tests/PadSharp.Tests/TestSupport.cs`
   and the Tests section of [CLAUDE.md](CLAUDE.md).
 - **Cross-platform.** No Windows-only libraries: PadSharp must build and run on Windows, Linux and macOS.
+- **Code health is gated.** Methods stay within 30 lines, cyclomatic complexity 10, cognitive complexity 15,
+  nesting 2 and 4 parameters, and types within 500 lines per file. `CodeHealthTests` fails the run otherwise.
+  Split the code; an exception needs a written reason in `CodeHealthTests.Exceptions`.
 
 [CLAUDE.md](CLAUDE.md) describes the architecture and the exact user-visible behaviour, such as status-bar texts,
 shortcuts and messages. Update its Behaviour section when you change any of them.

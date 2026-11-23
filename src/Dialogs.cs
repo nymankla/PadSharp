@@ -12,26 +12,7 @@ internal static class Dialogs
     /// <summary>Shows a message and returns the label of the button pressed (null if closed).</summary>
     public static Task<string?> AskAsync(Window owner, string title, string message, params string[] buttons)
     {
-        var dialog = NewDialog(title);
-        var row = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Right,
-            Spacing = 8,
-        };
-        for (int i = 0; i < buttons.Length; i++)
-        {
-            string label = buttons[i];
-            var button = new Button { Content = label, MinWidth = 80, HorizontalContentAlignment = HorizontalAlignment.Center };
-            if (i == 0)
-            {
-                button.Classes.Add("accent");
-            }
-
-            button.Click += (_, _) => dialog.Close(label);
-            row.Children.Add(button);
-        }
-
+        Window dialog = NewDialog(title);
         dialog.Content = new StackPanel
         {
             Margin = new Thickness(18),
@@ -39,7 +20,7 @@ internal static class Dialogs
             Children =
             {
                 new TextBlock { Text = message, TextWrapping = Avalonia.Media.TextWrapping.Wrap, MaxWidth = 420 },
-                row,
+                ButtonRow(dialog, buttons),
             },
         };
         dialog.KeyDown += (_, e) =>
@@ -55,26 +36,15 @@ internal static class Dialogs
     /// <summary>Asks for a line number; null when cancelled.</summary>
     public static Task<int?> GoToLineAsync(Window owner, int currentLine, int lastLine)
     {
-        var dialog = NewDialog("Go to Line");
+        Window dialog = NewDialog("Go to Line");
         int last = Math.Max(1, lastLine);
-        var input = new NumericUpDown
-        {
-            Minimum = 1,
-            Maximum = last,
-            Value = Math.Clamp(currentLine, 1, last),
-            FormatString = "0",
-            Width = 140,
-        };
+        var input = new NumericUpDown { Minimum = 1, Maximum = last, Value = Math.Clamp(currentLine, 1, last), FormatString = "0", Width = 140 };
         var go = new Button { Content = "Go", MinWidth = 80, IsDefault = true, Classes = { "accent" } };
         var cancel = new Button { Content = "Cancel", MinWidth = 80, IsCancel = true };
         go.Click += (_, _) => dialog.Close((int?)(int)(input.Value ?? 1));
         cancel.Click += (_, _) => dialog.Close(null);
 
-        var label = new TextBlock
-        {
-            Text = $"Line (1-{last.ToString(CultureInfo.CurrentCulture)}):",
-            VerticalAlignment = VerticalAlignment.Center,
-        };
+        var label = new TextBlock { Text = $"Line (1-{last.ToString(CultureInfo.CurrentCulture)}):", VerticalAlignment = VerticalAlignment.Center };
         dialog.Content = new StackPanel
         {
             Margin = new Thickness(18),
@@ -87,6 +57,25 @@ internal static class Dialogs
         };
         dialog.Opened += (_, _) => input.Focus();
         return dialog.ShowDialog<int?>(owner);
+    }
+
+    /// <summary>One button per label, right-aligned; the first is the accent (default) one. Each closes with its label.</summary>
+    private static StackPanel ButtonRow(Window dialog, string[] labels)
+    {
+        var row = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 8 };
+        foreach (string label in labels)
+        {
+            var button = new Button { Content = label, MinWidth = 80, HorizontalContentAlignment = HorizontalAlignment.Center };
+            button.Click += (_, _) => dialog.Close(label);
+            row.Children.Add(button);
+        }
+
+        if (row.Children.FirstOrDefault() is Button first)
+        {
+            first.Classes.Add("accent");
+        }
+
+        return row;
     }
 
     private static Window NewDialog(string title) => new()

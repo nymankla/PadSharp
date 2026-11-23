@@ -16,11 +16,11 @@ internal sealed partial class MainWindow
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto,Auto,Auto") };
         (TextBlock Text, Action? Click)[] parts =
         [
-            (languageText, () => ShowPicker(languageText, Languages.All, l => l.Name, l => l == Current?.Language, SetLanguage)),
+            (languageText, () => ShowPicker(languageText, Choices(Languages.All, l => l.Name, l => l == Current?.Language, SetLanguage))),
             (positionText, null),
             (linesText, null),
-            (eolText, () => ShowPicker(eolText, [EolKind.Windows, EolKind.Unix, EolKind.Macintosh], TextFile.EolName, k => k == Current?.Eol, SetEol)),
-            (encodingText, () => ShowPicker(encodingText, Enum.GetValues<TextEncodingKind>(), TextFile.EncodingName, k => k == Current?.Encoding, SetEncoding)),
+            (eolText, () => ShowPicker(eolText, Choices([EolKind.Windows, EolKind.Unix, EolKind.Macintosh], TextFile.EolName, k => k == Current?.Eol, SetEol))),
+            (encodingText, () => ShowPicker(encodingText, Choices(Enum.GetValues<TextEncodingKind>(), TextFile.EncodingName, k => k == Current?.Encoding, SetEncoding))),
         ];
         var divider = new SolidColorBrush(Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF));
         for (int i = 0; i < parts.Length; i++)
@@ -59,23 +59,27 @@ internal sealed partial class MainWindow
     }
 
     /// <summary>A pop-up list above a status-bar cell, the current choice checked.</summary>
-    private static void ShowPicker<T>(Control anchor, IEnumerable<T> choices, Func<T, string> name, Func<T, bool> isCurrent, Action<T> pick)
+    private static void ShowPicker(Control anchor, IEnumerable<(string Name, bool Current, Action Pick)> choices)
     {
         var menu = new ContextMenu { Placement = PlacementMode.TopEdgeAlignedLeft };
-        foreach (T choice in choices)
+        foreach ((string name, bool current, Action pick) in choices)
         {
-            T captured = choice;
             menu.Items.Add(new MenuItem
             {
-                Header = name(choice).Replace("_", "__", StringComparison.Ordinal),
+                Header = name.Replace("_", "__", StringComparison.Ordinal),
                 ToggleType = MenuItemToggleType.Radio,
-                IsChecked = isCurrent(choice),
-                Command = new RelayCommand(() => pick(captured)),
+                IsChecked = current,
+                Command = new RelayCommand(pick),
             });
         }
 
         menu.Open(anchor);
     }
+
+    /// <summary>The entries of a picker: each value's name, whether it is the current one, and how to choose it.</summary>
+    internal static IEnumerable<(string Name, bool Current, Action Pick)> Choices<T>(
+        IEnumerable<T> values, Func<T, string> name, Func<T, bool> isCurrent, Action<T> pick) =>
+        values.Select(v => (name(v), isCurrent(v), (Action)(() => pick(v))));
 
     private void UpdateStatus()
     {

@@ -35,43 +35,32 @@ internal sealed class SettingsWindow : Window
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         Background = Look.PanelBack;
 
+        Content = new StackPanel { Margin = new Thickness(20), Spacing = 16, Children = { Heading(), AppearanceCard(), EditorCard(), Footer() } };
+    }
+
+    private Border AppearanceCard() => Card("Appearance",
+        Row("Theme", "Follow the system, or pick one", ThemePicker()),
+        Row("Accent color", "Gradient, caret, selection and status bar", AccentPicker()),
+        Row("Font", "Editor typeface", FontPicker()),
+        Row("Font size", "In points, before zoom", FontSizePicker()));
+
+    private Border EditorCard() => Card("Editor",
+        Row("Tab width", "Columns per tab stop", TabWidthPicker()),
+        Row("Insert spaces", "Typing Tab inserts spaces", Toggle(settings.InsertSpaces, v => settings.InsertSpaces = v)),
+        Row("Word wrap", "Wrap long lines to the window", Toggle(settings.WordWrap, v => settings.WordWrap = v)),
+        Row("Line numbers", "Show the line number margin", Toggle(settings.ShowLineNumbers, v => settings.ShowLineNumbers = v)),
+        Row("Highlight current line", "Tint the line holding the caret", Toggle(settings.HighlightCurrentLine, v => settings.HighlightCurrentLine = v)),
+        Row("Show whitespace", "Draw dots for spaces and arrows for tabs", Toggle(settings.ShowWhitespace, v => settings.ShowWhitespace = v)));
+
+    /// <summary>"Changes apply and save instantly." and the Done button.</summary>
+    private DockPanel Footer()
+    {
         var close = new Button { Content = "Done", MinWidth = 96, IsDefault = true, IsCancel = true, HorizontalContentAlignment = HorizontalAlignment.Center };
         close.Classes.Add("accent");
         close.Click += (_, _) => Close();
-
-        var footer = new DockPanel { Margin = new Thickness(0, 4, 0, 0) };
         DockPanel.SetDock(close, Dock.Right);
-        footer.Children.Add(close);
-        footer.Children.Add(new TextBlock
-        {
-            Text = "Changes apply and save instantly.",
-            Foreground = Look.MutedFore,
-            FontSize = 12,
-            VerticalAlignment = VerticalAlignment.Center,
-        });
-
-        Content = new StackPanel
-        {
-            Margin = new Thickness(20),
-            Spacing = 16,
-            Children =
-            {
-                Heading(),
-                Card("Appearance",
-                    Row("Theme", "Follow the system, or pick one", ThemePicker()),
-                    Row("Accent color", "Gradient, caret, selection and status bar", AccentPicker()),
-                    Row("Font", "Editor typeface", FontPicker()),
-                    Row("Font size", "In points, before zoom", FontSizePicker())),
-                Card("Editor",
-                    Row("Tab width", "Columns per tab stop", TabWidthPicker()),
-                    Row("Insert spaces", "Typing Tab inserts spaces", Toggle(settings.InsertSpaces, v => settings.InsertSpaces = v)),
-                    Row("Word wrap", "Wrap long lines to the window", Toggle(settings.WordWrap, v => settings.WordWrap = v)),
-                    Row("Line numbers", "Show the line number margin", Toggle(settings.ShowLineNumbers, v => settings.ShowLineNumbers = v)),
-                    Row("Highlight current line", "Tint the line holding the caret", Toggle(settings.HighlightCurrentLine, v => settings.HighlightCurrentLine = v)),
-                    Row("Show whitespace", "Draw dots for spaces and arrows for tabs", Toggle(settings.ShowWhitespace, v => settings.ShowWhitespace = v))),
-                footer,
-            },
-        };
+        var note = new TextBlock { Text = "Changes apply and save instantly.", Foreground = Look.MutedFore, FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
+        return new DockPanel { Margin = new Thickness(0, 4, 0, 0), Children = { close, note } };
     }
 
     protected override void OnKeyDown(KeyEventArgs e)
@@ -178,23 +167,7 @@ internal sealed class SettingsWindow : Window
         foreach (Accent accent in Palettes.Accents)
         {
             Accent captured = accent;
-            var ring = new Border
-            {
-                Child = Icons.Swatch(accent, 18),
-                BorderThickness = new Thickness(2),
-                CornerRadius = new CornerRadius(13),
-                Padding = new Thickness(2),
-            };
-            var button = new Button
-            {
-                Content = ring,
-                Padding = new Thickness(0),
-                Background = Brushes.Transparent,
-                BorderThickness = new Thickness(0),
-                CornerRadius = new CornerRadius(13),
-                Cursor = new Cursor(StandardCursorType.Hand),
-            };
-            ToolTip.SetTip(button, accent.Name);
+            (Button button, Border ring) = Swatch(accent);
             button.Click += (_, _) =>
             {
                 settings.Accent = captured.Name;
@@ -207,6 +180,23 @@ internal sealed class SettingsWindow : Window
 
         MarkSelected();
         return row;
+    }
+
+    /// <summary>A round accent swatch inside a ring (coloured when chosen), as a button named after the accent.</summary>
+    private static (Button Button, Border Ring) Swatch(Accent accent)
+    {
+        var ring = new Border { Child = Icons.Swatch(accent, 18), BorderThickness = new Thickness(2), CornerRadius = new CornerRadius(13), Padding = new Thickness(2) };
+        var button = new Button
+        {
+            Content = ring,
+            Padding = new Thickness(0),
+            Background = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            CornerRadius = new CornerRadius(13),
+            Cursor = new Cursor(StandardCursorType.Hand),
+        };
+        ToolTip.SetTip(button, accent.Name);
+        return (button, ring);
     }
 
     private ComboBox FontPicker()

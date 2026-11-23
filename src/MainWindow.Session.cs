@@ -36,7 +36,7 @@ internal sealed partial class MainWindow
         if (tab.Buffer is { } buffer && Session.ReadBuffer(buffer) is { } text)
         {
             var unsaved = new Document(tab.Path is null ? Math.Max(1, tab.UntitledNumber) : 0);
-            unsaved.Restore(tab.Path, text, tab.Encoding, tab.Eol, chosen ?? Languages.Detect(tab.Path, text), tab.Caret, tab.DiskStamp);
+            unsaved.Restore(tab, text, chosen ?? Languages.Detect(tab.Path, text));
             return unsaved;
         }
 
@@ -81,18 +81,7 @@ internal sealed partial class MainWindow
                 state.Selected = state.Tabs.Count;
             }
 
-            state.Tabs.Add(new SessionTab
-            {
-                Path = doc.FilePath,
-                UntitledNumber = doc.UntitledNumber,
-                Buffer = TrackBuffer(doc, changed),
-                Encoding = doc.Encoding,
-                Eol = doc.Eol,
-                // Only a manual choice is stored, so a later, better detection (e.g. a new language) takes effect.
-                Language = doc.Language == Languages.Detect(doc.FilePath, doc.FirstLine) ? null : doc.Language.Name,
-                Caret = doc.Editor.CaretOffset,
-                DiskStamp = doc.DiskStamp,
-            });
+            state.Tabs.Add(ToSessionTab(doc, changed));
         }
 
         string? problem = Session.Save(state, changed);
@@ -130,6 +119,20 @@ internal sealed partial class MainWindow
             // Already crashing; nothing more to do.
         }
     }
+
+    /// <summary>How one tab is remembered; its unsaved text, when changed, is queued in <paramref name="changed"/>.</summary>
+    private SessionTab ToSessionTab(Document doc, List<(string Name, string Text)> changed) => new()
+    {
+        Path = doc.FilePath,
+        UntitledNumber = doc.UntitledNumber,
+        Buffer = TrackBuffer(doc, changed),
+        Encoding = doc.Encoding,
+        Eol = doc.Eol,
+        // Only a manual choice is stored, so a later, better detection (e.g. a new language) takes effect.
+        Language = doc.Language == Languages.Detect(doc.FilePath, doc.FirstLine) ? null : doc.Language.Name,
+        Caret = doc.Editor.CaretOffset,
+        DiskStamp = doc.DiskStamp,
+    };
 
     /// <summary>
     /// The buffer name for a tab with unsaved changes (queuing its text when it changed since the last save),
