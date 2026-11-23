@@ -24,29 +24,54 @@ internal static class SingleInstance
         }
     }
 
-    /// <summary>Sends files, as full paths, to a running PadSharp. False when none answers in time.</summary>
+    /// <summary>
+    /// Sends files, as full paths, to a running PadSharp. False when none answers in time. A connection that is reset
+    /// is tried again until the timeout: on Linux and macOS (Unix sockets) a client that arrives while the running
+    /// PadSharp is between two clients can land on the listener that is just closing.
+    /// </summary>
     public static bool TrySend(string pipeName, IReadOnlyList<string> files, TimeSpan timeout)
     {
         ArgumentNullException.ThrowIfNull(files);
-        try
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        while (clock.Elapsed < timeout)
         {
-            using var pipe = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.CurrentUserOnly);
-            pipe.Connect((int)timeout.TotalMilliseconds);
-            using var writer = new StreamWriter(pipe, new UTF8Encoding(false), leaveOpen: true) { AutoFlush = true, NewLine = "\n" };
-            using var reader = new StreamReader(pipe, Encoding.UTF8, leaveOpen: true);
-            writer.WriteLine(Hello);
-            foreach (string file in files)
+            try
             {
-                writer.WriteLine(Path.GetFullPath(file));
+                if (SendOnce(pipeName, files, timeout - clock.Elapsed))
+                {
+                    return true;
+                }
+            }
+            catch (Exception ex) when (ex is TimeoutException or UnauthorizedAccessException)
+            {
+                return false;
+            }
+            catch (IOException)
+            {
+                // Reset between two clients; try again below.
             }
 
-            writer.WriteLine();
-            return reader.ReadLine() == Done;
+            Thread.Sleep(50);
         }
-        catch (Exception ex) when (ex is TimeoutException or IOException or UnauthorizedAccessException)
+
+        return false;
+    }
+
+    /// <summary>One exchange: hello, the paths, an empty line; true when the running PadSharp answers "ok".</summary>
+    private static bool SendOnce(string pipeName, IReadOnlyList<string> files, TimeSpan timeout)
+    {
+        using var pipe = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.CurrentUserOnly);
+        pipe.Connect((int)Math.Max(1, timeout.TotalMilliseconds));
+        using var writer = new StreamWriter(pipe, new UTF8Encoding(false), leaveOpen: true) { AutoFlush = true, NewLine = "\n" };
+        using var reader = new StreamReader(pipe, Encoding.UTF8, leaveOpen: true);
+        writer.WriteLine(Hello);
+        foreach (string file in files)
         {
-            return false;
+            writer.WriteLine(Path.GetFullPath(file));
         }
+
+        writer.WriteLine();
+        return reader.ReadLine() == Done;
     }
 }
 
