@@ -7,11 +7,25 @@ start PadSharp, even if you never saved them as a file.
 
 ## Getting started
 
-PadSharp is a self-contained folder: no installer, and no .NET runtime to install.
+Download the file for your system from the project's **Releases** page. Nothing else needs installing: no .NET
+runtime, no admin rights.
 
-- **Start it:** run `PadSharp` (or `PadSharp.exe` on Windows).
+| System | Download | Then |
+|---|---|---|
+| Windows | `PadSharp-<version>-win-x64.zip` | Unzip anywhere and run `PadSharp.exe` |
+| Linux | `PadSharp-<version>-linux-x64.tar.gz` | Unpack, then run `./install.sh` in the folder: it adds PadSharp to your app menu and a `padsharp` command (`./install.sh --uninstall` removes it) |
+| macOS (Apple silicon) | `PadSharp-<version>-osx-arm64.zip` | Unzip and move **PadSharp.app** to Applications |
+
+**macOS says the app "can't be opened"?** Builds without an Apple Developer ID aren't notarized, so Gatekeeper
+blocks them. Right-click PadSharp.app and choose **Open** once, or run
+`xattr -dr com.apple.quarantine /Applications/PadSharp.app`. **Windows SmartScreen** may also warn about an unsigned
+program; choose **More info → Run anyway**.
+
 - **Open files from the command line:** `PadSharp notes.txt todo.md`
 - **Open files any time:** drag them onto the window, or use **File → Open** (`Ctrl+O`).
+- **PadSharp runs once.** Starting it again (from a terminal, a shortcut or `ed`) sends the files to the window
+  that's already open and brings it to the front, instead of opening a second window.
+- Window size, position, maximized state and zoom are remembered between runs.
 
 ### The `ed` command
 
@@ -23,7 +37,9 @@ ed                     # open PadSharp
 ed notes.txt todo.md   # open these files (relative names are fine)
 ```
 
-It starts PadSharp and hands the prompt straight back to you; it doesn't wait for the editor to close.
+It hands the prompt straight back to you; it doesn't wait for the editor to close. If PadSharp is already
+running, the files open as new tabs in that window. On macOS the script is inside the app, at
+`PadSharp.app/Contents/MacOS/ed`; link to it from a folder on your `PATH`.
 
 **You can rename it to anything you like**: `pad`, `e`, `note`. The script finds PadSharp in its own folder,
 not by its name, so any name works. Keep it in the same folder as PadSharp. On Linux and macOS you can instead
@@ -51,18 +67,26 @@ The program, with the matching `ed` launcher, ends up in `bin/Release/net11.0/<p
 
 - **Closing PadSharp never asks to save.** Every tab, including untitled ones and unsaved changes, is kept and
   reopens next time, with the cursor where you left it.
-- Your work is also kept every couple of seconds while you type, so a crash or power cut loses almost nothing.
+- Your work is also kept every couple of seconds while you type, and once more if PadSharp crashes, so a crash or
+  power cut loses almost nothing. Each copy is written in full before it replaces the old one, so a half-written
+  save never overwrites a good copy.
+- If keeping your work fails (for example a full disk), the status bar says **⚠ Unsaved text not protected** until it
+  works again.
 - **Closing a single tab** that has changes *does* ask: **Save**, **Don't Save** or **Cancel**.
 - **Files changed by another program** are reloaded automatically when you switch back to PadSharp. If you have
-  unsaved changes in that tab, PadSharp asks whether to **Reload** or **Keep Mine**.
+  unsaved changes in that tab, PadSharp asks whether to **Reload** or **Keep Mine**. This also works for changes
+  made while PadSharp was closed.
+- **Files with mixed line endings** show `Mixed → CRLF` (or `LF`) in the status bar: saving writes every line with
+  the ending shown. Pick one in the status bar to make that choice yourself.
 - A dot on each tab shows its state: green is saved, amber has unsaved changes.
 
-If you open a second PadSharp window, only the first one keeps your tabs between runs. The second one asks to save
-when you close it, like a classic editor.
+If a second PadSharp does end up running, for example because the first one didn't answer in time, only the first
+keeps your tabs between runs. The second one asks to save when you close it, like a classic editor.
 
 ## Keyboard shortcuts
 
-The shortcuts are the same on every system, macOS included: they use `Ctrl`, not `Cmd`.
+On macOS, use `Cmd` wherever this list says `Ctrl`. Switching tabs (`Ctrl+Tab`) stays `Ctrl`, as is usual on the
+Mac.
 
 ### Files and tabs
 
@@ -126,7 +150,7 @@ An invalid pattern shows `Invalid regular expression` instead of searching.
 | Keys | Action |
 |---|---|
 | `Ctrl+Mouse wheel` | Zoom in / out |
-| `Ctrl+Numpad +` / `Ctrl+Numpad −` | Zoom in / out |
+| `Ctrl+=` / `Ctrl+-` (or the numpad `+` / `−`) | Zoom in / out |
 | `Ctrl+0` | Reset zoom |
 | `Ctrl+Shift+D` | Switch between dark and light |
 | `Ctrl+,` | Preferences |

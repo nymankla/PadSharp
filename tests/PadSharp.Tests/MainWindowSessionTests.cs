@@ -104,6 +104,55 @@ public sealed class MainWindowSessionTests : IDisposable
     }
 
     [AvaloniaFact]
+    public async Task AChangeMadeWhileClosedIsStillNoticed()
+    {
+        string path = sandbox.File("c.txt", "v1");
+        MainWindow first = sandbox.Open(files: [path]);
+        first.Current!.Editor.Document.Text = "mine";
+        Close(first);
+        File.WriteAllText(path, "theirs");
+        File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddMinutes(1));
+
+        // Opening activates the window, which checks the disk and asks straight away.
+        MainWindow second = sandbox.Open();
+        Assert.Equal("mine", second.Current!.Text);
+        Click(second, "Reload");
+        await second.CheckDiskChangesAsync();
+
+        Assert.Equal(("theirs", false), (second.Current.Text, second.Current.IsDirty));
+    }
+
+    [AvaloniaFact]
+    public void ACrashSaveKeepsUnsavedTextWhileTheWindowIsOpen()
+    {
+        MainWindow window = sandbox.Open();
+        window.Current!.Editor.Document.Text = "almost lost";
+
+        window.SaveSessionBeforeCrash();
+
+        SessionTab tab = Assert.Single(Session.Load()!.Tabs);
+        Assert.Equal("almost lost", Session.ReadBuffer(tab.Buffer!));
+    }
+
+    [AvaloniaFact]
+    public void AFailedSessionSaveIsShownUntilOneWorks()
+    {
+        MainWindow window = sandbox.Open();
+        window.Current!.Editor.Document.Text = "precious";
+        string blocker = Path.Combine(sandbox.Root, "blocked");
+        File.WriteAllText(blocker, "file");
+
+        AppSettings.DataFolder = blocker;
+        window.SaveSessionBeforeCrash();
+        Assert.StartsWith("⚠ Unsaved text not protected", window.StatusParts[0], StringComparison.Ordinal);
+
+        AppSettings.DataFolder = sandbox.Data;
+        window.SaveSessionBeforeCrash();
+        Assert.Equal("Plain Text", window.StatusParts[0]);
+        Assert.Equal("precious", Session.ReadBuffer(Session.Load()!.Tabs.Single().Buffer!));
+    }
+
+    [AvaloniaFact]
     public async Task ASavedTabReloadsSilentlyWhenTheFileChanges()
     {
         string path = sandbox.File("w.txt", "v1");

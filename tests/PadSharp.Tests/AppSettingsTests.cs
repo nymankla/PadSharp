@@ -44,6 +44,30 @@ public sealed class AppSettingsTests : IDisposable
     }
 
     [AvaloniaFact]
+    public void SaveReportsSuccessOrWhyItFailed()
+    {
+        Assert.Null(new AppSettings().Save());
+        Assert.Empty(Directory.EnumerateFiles(sandbox.Data, "*.tmp"));
+
+        string blocker = Path.Combine(sandbox.Root, "blocked");
+        File.WriteAllText(blocker, "file");
+        AppSettings.DataFolder = blocker;
+        Assert.NotNull(new AppSettings().Save());
+    }
+
+    [AvaloniaFact]
+    public void WindowAndZoomValuesAreKeptInRange()
+    {
+        Directory.CreateDirectory(sandbox.Data);
+        File.WriteAllText(AppSettings.FilePath, """{ "Zoom": 500, "WindowWidth": 5, "WindowHeight": 99999 }""");
+
+        AppSettings loaded = AppSettings.Load();
+
+        Assert.Equal((Look.MaxZoom, 400.0, 20000.0), (loaded.Zoom, loaded.WindowWidth, loaded.WindowHeight));
+        Assert.Null(loaded.WindowX);
+    }
+
+    [AvaloniaFact]
     public void ADamagedFileGivesTheDefaults()
     {
         Directory.CreateDirectory(sandbox.Data);

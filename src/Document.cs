@@ -110,7 +110,10 @@ internal sealed class Document
     public int Revision { get; private set; }
 
     /// <summary>The file's last-write time when it was loaded or saved, to notice changes made elsewhere.</summary>
-    private DateTime? DiskStamp { get; set; }
+    public DateTime? DiskStamp { get; private set; }
+
+    /// <summary>The file mixed line-ending styles when loaded; saving writes them all as <see cref="Eol"/>.</summary>
+    public bool HasMixedEol { get; set; }
 
     /// <summary>True when the file was rewritten by something else since it was loaded or saved here.</summary>
     public bool IsChangedOnDisk =>
@@ -172,6 +175,7 @@ internal sealed class Document
         int caret = detectLanguage ? 0 : Editor.CaretOffset;
         Eol = loaded.Eol;
         Encoding = loaded.Encoding;
+        HasMixedEol = loaded.MixedEol;
         FilePath = path;
         UntitledNumber = 0;
         Editor.Document.Text = loaded.Text;
@@ -186,15 +190,18 @@ internal sealed class Document
         MarkSaved();
     }
 
-    /// <summary>Brings back a tab's unsaved text from the session; it stays marked as changed.</summary>
-    public void Restore(string? path, string text, TextEncodingKind encoding, EolKind eol, Language language, int caret)
+    /// <summary>
+    /// Brings back a tab's unsaved text from the session; it stays marked as changed. <paramref name="diskStamp"/> is
+    /// the file's time when the session was saved, so a change made while PadSharp was closed is still noticed.
+    /// </summary>
+    public void Restore(string? path, string text, TextEncodingKind encoding, EolKind eol, Language language, int caret, DateTime? diskStamp = null)
     {
         ArgumentNullException.ThrowIfNull(text);
         FilePath = path;
         if (path is not null)
         {
             UntitledNumber = 0;
-            DiskStamp = File.Exists(path) ? File.GetLastWriteTimeUtc(path) : null;
+            DiskStamp = diskStamp ?? (File.Exists(path) ? File.GetLastWriteTimeUtc(path) : null);
         }
 
         Encoding = encoding;
@@ -227,6 +234,7 @@ internal sealed class Document
         FilePath = path;
         UntitledNumber = 0;
         DiskStamp = File.GetLastWriteTimeUtc(path);
+        HasMixedEol = false;
         MarkSaved();
     }
 

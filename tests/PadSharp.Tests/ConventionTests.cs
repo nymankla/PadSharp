@@ -63,6 +63,38 @@ public sealed class ConventionTests
     }
 
     [AvaloniaFact]
+    public void LinuxAndMacFilesUseLfAndKeepTheirPlaceholders()
+    {
+        string dist = Path.Combine(RepoRoot(), "dist");
+        foreach (string file in new[] { "ed", "linux/install.sh", "linux/padsharp.desktop", "linux/padsharp.svg", "macos/Info.plist" })
+        {
+            Assert.DoesNotContain('\r', File.ReadAllText(Path.Combine(dist, file)));
+        }
+
+        Assert.StartsWith("#!/bin/sh\n", File.ReadAllText(Path.Combine(dist, "linux", "install.sh")), StringComparison.Ordinal);
+        Assert.Contains("Exec=\"@EXEC@\" %F", File.ReadAllText(Path.Combine(dist, "linux", "padsharp.desktop")), StringComparison.Ordinal);
+        string plist = File.ReadAllText(Path.Combine(dist, "macos", "Info.plist"));
+        Assert.Contains("<string>@VERSION@</string>", plist, StringComparison.Ordinal);
+        Assert.Contains("<string>@BUNDLE_ID@</string>", plist, StringComparison.Ordinal);
+        Assert.Contains("<string>PadSharp</string>", plist, StringComparison.Ordinal);
+    }
+
+    [AvaloniaFact]
+    public void TheReleaseWorkflowPackagesEveryTarget()
+    {
+        string release = File.ReadAllText(Path.Combine(RepoRoot(), ".github", "workflows", "release.yml"));
+
+        foreach (string rid in new[] { "win-x64", "linux-x64", "osx-arm64" })
+        {
+            Assert.Contains($"rid: {rid}", release, StringComparison.Ordinal);
+        }
+
+        Assert.Contains("<Version>${version}</Version>", release, StringComparison.Ordinal);
+        Assert.Contains("dist/linux/install.sh", release, StringComparison.Ordinal);
+        Assert.Contains("dist/macos/Info.plist", release, StringComparison.Ordinal);
+    }
+
+    [AvaloniaFact]
     public void TestClassNamesFollowTheFileNames()
     {
         Assert.Equal("MainWindowFindTests", TestClassFor("MainWindow.Find.cs"));

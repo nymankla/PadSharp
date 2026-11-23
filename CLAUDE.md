@@ -100,13 +100,27 @@ menu checks, title). Put new code in the file of its seam.
 
 The current rules for user-visible behaviour. Update this section when you change them.
 
+**One instance**: `Program.Main` claims the session lock before Avalonia starts. If another PadSharp owns it, the
+arguments go to that window over a current-user named pipe (`SingleInstance`), and this process exits. The owning
+window runs `SingleInstanceServer`, opens what it receives and comes to the front. If the hand-off fails, the
+start continues as a window that doesn't own the session. `--screenshot` runs never forward or claim.
+
+**Window**: size, position (moved back on screen if its monitor is gone), maximized state and zoom are kept in
+settings on close. Screenshot runs use 1100x720 with no zoom. Shortcuts are written `Ctrl+…` and become `Cmd+…` on
+macOS (`MainWindow.ForPlatform`); `Ctrl+Tab` stays. Zoom keys: `Ctrl+=`, `Ctrl+Shift+=`, `Ctrl+-` and the numpad.
+
 **Tabs and hot exit**
 - New tabs are `Untitled-N`, N = smallest positive number not used by another open untitled tab.
 - Closing the window never asks: all tabs, including unsaved text, come back on the next start.
 - Closing a single tab with changes asks `Save changes to "NAME"?` (Save / Don't Save / Cancel).
 - Closing the last tab leaves a fresh untitled tab. New documents are UTF-8 with CRLF line breaks.
 - On window activation, files changed elsewhere are reloaded silently (caret kept); if the tab has unsaved
-  changes, it asks Reload / Keep Mine.
+  changes, it asks Reload / Keep Mine. The session stores each file's timestamp, so a change made while closed
+  is noticed too.
+- Session and settings files are written to `*.tmp` and renamed into place. A failed session save shows
+  `⚠ Unsaved text not protected: …` in the status bar until a save works. Unhandled exceptions on the UI thread
+  save the session first (`SaveSessionBeforeCrash`). Async commands go through `Run`, which shows errors.
+- A file loaded with mixed line endings shows `Mixed → CRLF` (etc.) until a line ending is chosen or it is saved.
 
 **Status bar**, left to right: language name (or a transient message) · `Ln 12, Col 4` (+ `(N selected)`,
 + `OVR` in overtype) · `N lines` · `CRLF`/`LF`/`CR` · `UTF-8`/`UTF-8 BOM`/`UTF-16 LE`/`UTF-16 BE`/`ANSI`.
@@ -138,5 +152,8 @@ regular expression (`.*`: .NET syntax, `^`/`$` per line, empty matches skipped, 
 changes get a line under `[Unreleased]` in `CHANGELOG.md`, written for users. The version is `<Version>` in
 `PadSharp.csproj` (shown in About). MIT license; `LICENSE`, `THIRD-PARTY-NOTICES.md` and `README.md` are copied to
 the publish folder, so update the notices when a shipped package is added. CI (`.github/workflows/ci.yml`) builds
-and tests on Windows, Linux and macOS and publishes Native AOT artifacts; Dependabot groups the Avalonia packages
+and tests on Windows, Linux and macOS and publishes Native AOT artifacts. Pushing a `v*` tag runs
+`.github/workflows/release.yml`: version and changelog check, then packages (Windows zip; Linux tarball with
+`dist/linux/install.sh`, `.desktop` and icon; macOS `PadSharp.app` from `dist/macos/Info.plist`), optional
+signing via secrets, and a GitHub release. Everything under `dist/` except `.cmd` is LF (`.gitattributes`); Dependabot groups the Avalonia packages
 (the headless test package pins the xUnit version).

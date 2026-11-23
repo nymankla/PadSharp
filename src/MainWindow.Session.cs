@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Threading;
 
 namespace PadSharp;
 
@@ -35,7 +36,7 @@ internal sealed partial class MainWindow
         if (tab.Buffer is { } buffer && Session.ReadBuffer(buffer) is { } text)
         {
             var unsaved = new Document(tab.Path is null ? Math.Max(1, tab.UntitledNumber) : 0);
-            unsaved.Restore(tab.Path, text, tab.Encoding, tab.Eol, chosen ?? Languages.Detect(tab.Path, text), tab.Caret);
+            unsaved.Restore(tab.Path, text, tab.Encoding, tab.Eol, chosen ?? Languages.Detect(tab.Path, text), tab.Caret, tab.DiskStamp);
             return unsaved;
         }
 
@@ -90,10 +91,44 @@ internal sealed partial class MainWindow
                 // Only a manual choice is stored, so a later, better detection (e.g. a new language) takes effect.
                 Language = doc.Language == Languages.Detect(doc.FilePath, doc.FirstLine) ? null : doc.Language.Name,
                 Caret = doc.Editor.CaretOffset,
+                DiskStamp = doc.DiskStamp,
             });
         }
 
-        Session.Save(state, changed);
+        string? problem = Session.Save(state, changed);
+        if (problem != sessionProblem)
+        {
+            sessionProblem = problem;
+            UpdateStatus();
+        }
+
+        if (problem is not null)
+        {
+            // Nothing was kept: write every buffer again next time instead of trusting what was "saved".
+            savedRevisions.Clear();
+            sessionPending = true;
+        }
+    }
+
+    /// <summary>
+    /// Last chance before a crash takes the process down: keep the session so unsaved text survives. It runs on
+    /// the UI thread only (the editor's text can't be read from elsewhere) and never throws.
+    /// </summary>
+    internal void SaveSessionBeforeCrash()
+    {
+        if (!hotExit || !Dispatcher.UIThread.CheckAccess())
+        {
+            return;
+        }
+
+        try
+        {
+            SaveSession();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            // Already crashing; nothing more to do.
+        }
     }
 
     /// <summary>

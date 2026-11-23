@@ -61,6 +61,9 @@ internal sealed partial class MainWindow : Window
     private bool sessionPending;
     private bool checkingDisk;
 
+    /// <summary>Why the last session save failed (shown in the status bar until one works), or null.</summary>
+    private string? sessionProblem;
+
     /// <summary>Messages raised before the window is shown (e.g. a missing file on the command line).</summary>
     private readonly List<(string Title, string Message)> pendingMessages = [];
 
@@ -70,8 +73,23 @@ internal sealed partial class MainWindow : Window
         this.shutdown = shutdown;
         this.settings = settings;
         Title = AppName;
-        Width = 1100;
-        Height = 720;
+
+        // Screenshot runs keep a fixed size and no zoom, so pictures are comparable.
+        bool remember = screenshotPath is null;
+        Width = remember ? settings.WindowWidth : 1100;
+        Height = remember ? settings.WindowHeight : 720;
+        zoom = remember ? settings.Zoom : 0;
+        if (remember && settings.WindowX is { } x && settings.WindowY is { } y)
+        {
+            WindowStartupLocation = WindowStartupLocation.Manual;
+            Position = new PixelPoint(x, y);
+        }
+
+        if (remember && settings.WindowMaximized)
+        {
+            WindowState = WindowState.Maximized;
+        }
+
         MinWidth = 400;
         MinHeight = 300;
         Icon = Icons.CreateWindowIcon();
@@ -120,17 +138,23 @@ internal sealed partial class MainWindow : Window
         }
 
         // Screenshot runs never touch the person's session.
-        hotExit = screenshotPath is null && Session.TryClaim();
+        // Program.Main usually claimed the session already; a window opened another way claims it here.
+        hotExit = screenshotPath is null && Session.TryTakeOwnership();
         if (hotExit)
         {
             RestoreSession();
             sessionTimer.Tick += (_, _) => SaveSessionIfPending();
             sessionTimer.Start();
+            Dispatcher.UIThread.UnhandledException += OnUnhandledException;
+            AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
+            var instanceServer = new SingleInstanceServer(SingleInstance.PipeName,
+                files => Dispatcher.UIThread.Post(() => OpenFromOtherInstance(files)));
+            Closed += (_, _) => instanceServer.Dispose();
         }
 
         if (screenshotPath is null)
         {
-            Activated += (_, _) => _ = CheckDiskChangesAsync();
+            Activated += (_, _) => Run(() => CheckDiskChangesAsync());
         }
 
         OpenFiles(files);
@@ -163,6 +187,7 @@ internal sealed partial class MainWindow : Window
         }
         else
         {
+            KeepOnScreen();
             Current?.Editor.TextArea.Focus();
         }
 
@@ -172,6 +197,35 @@ internal sealed partial class MainWindow : Window
         }
 
         pendingMessages.Clear();
+    }
+
+    private void OnUnhandledException(object? sender, EventArgs e) => SaveSessionBeforeCrash();
+
+    /// <summary>Files from a later start (e.g. <c>ed notes.txt</c>): open them here and come to the front.</summary>
+    internal void OpenFromOtherInstance(IReadOnlyList<string> files)
+    {
+        OpenFiles(files);
+        if (WindowState == WindowState.Minimized)
+        {
+            WindowState = WindowState.Normal;
+        }
+
+        Activate();
+    }
+
+    /// <summary>Starts an async command; an error it throws is shown instead of vanishing.</summary>
+    private void Run(Func<Task> command) => _ = ObserveAsync(command);
+
+    private async Task ObserveAsync(Func<Task> command)
+    {
+        try
+        {
+            await command();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException or NotSupportedException)
+        {
+            ShowMessage(AppName, $"That didn't work: {ex.Message}");
+        }
     }
 
     /// <summary>Shows a message now, or once the window is open (a dialog needs a visible owner).</summary>
@@ -197,13 +251,46 @@ internal sealed partial class MainWindow : Window
         else if (screenshotPath is null && !closeConfirmed && documents.Exists(d => d.IsDirty))
         {
             e.Cancel = true;
-            _ = ConfirmCloseAsync();
+            Run(() => ConfirmCloseAsync());
             return;
+        }
+
+        if (screenshotPath is null)
+        {
+            RememberWindow();
         }
 
         settingsWindow?.Close();
 
         base.OnClosing(e);
+    }
+
+    /// <summary>Keeps size, position, maximized state and zoom for the next start.</summary>
+    private void RememberWindow()
+    {
+        settings.Zoom = zoom;
+        settings.WindowMaximized = WindowState == WindowState.Maximized;
+        if (WindowState == WindowState.Normal)
+        {
+            settings.WindowWidth = ClientSize.Width;
+            settings.WindowHeight = ClientSize.Height;
+            settings.WindowX = Position.X;
+            settings.WindowY = Position.Y;
+        }
+
+        _ = settings.Save();
+    }
+
+    /// <summary>A remembered position on a screen that is gone (unplugged monitor) moves back onto the main screen.</summary>
+    private void KeepOnScreen()
+    {
+        if (Screens.All.Count == 0 || Screens.ScreenFromPoint(Position) is not null || Screens.Primary is not { } primary)
+        {
+            return;
+        }
+
+        PixelRect area = primary.WorkingArea;
+        Position = new PixelPoint(area.X + 40, area.Y + 40);
     }
 
     protected override void OnClosed(EventArgs e)
@@ -212,6 +299,8 @@ internal sealed partial class MainWindow : Window
         sessionTimer.Stop();
         if (hotExit)
         {
+            Dispatcher.UIThread.UnhandledException -= OnUnhandledException;
+            AppDomain.CurrentDomain.UnhandledException -= OnUnhandledException;
             Session.Release();
         }
     }
@@ -229,12 +318,31 @@ internal sealed partial class MainWindow : Window
         return menuItem;
     }
 
+    /// <summary>The platform's command key: Ctrl, or Cmd on macOS.</summary>
+    private static KeyModifiers CommandKey =>
+        Application.Current?.PlatformSettings?.HotkeyConfiguration.CommandModifiers ?? KeyModifiers.Control;
+
+    /// <summary>Shortcuts are written with Ctrl; on a platform whose command key differs (macOS: Cmd) Ctrl becomes it.</summary>
+    internal static KeyGesture ForPlatform(KeyGesture gesture, KeyModifiers command)
+    {
+        ArgumentNullException.ThrowIfNull(gesture);
+        return command == KeyModifiers.Control || !gesture.KeyModifiers.HasFlag(KeyModifiers.Control)
+            ? gesture
+            : new KeyGesture(gesture.Key, (gesture.KeyModifiers & ~KeyModifiers.Control) | command);
+    }
+
+    /// <summary>A shortcut as this platform shows it, for tooltips.</summary>
+    private static string ShortcutText(string gesture) => ForPlatform(KeyGesture.Parse(gesture), CommandKey).ToString("p", null);
+
+    /// <summary>A shortcut with no menu item of its own (e.g. a second key for the same command).</summary>
+    private void Bind(string gesture, Action run) => shortcuts.Add((ForPlatform(KeyGesture.Parse(gesture), CommandKey), run));
+
     private MenuItem Item(string header, Action run, string? gesture = null, bool active = true)
     {
         var item = new MenuItem { Header = header, Command = new RelayCommand(run) };
         if (gesture is not null)
         {
-            KeyGesture keys = KeyGesture.Parse(gesture);
+            KeyGesture keys = ForPlatform(KeyGesture.Parse(gesture), CommandKey);
             item.InputGesture = keys;
             if (active)
             {
@@ -294,13 +402,13 @@ internal sealed partial class MainWindow : Window
         var menu = new Menu { Background = Brushes.Transparent, VerticalAlignment = VerticalAlignment.Center };
         menu.Items.Add(Menu("_File",
             Item("_New", NewDocument, "Ctrl+N"),
-            Item("_Open...", () => _ = OpenWithDialogAsync(), "Ctrl+O"),
-            Item("_Reload from Disk", () => _ = ReloadCurrentAsync()),
-            Item("_Save", () => _ = SaveDocumentAsync(Current), "Ctrl+S"),
-            Item("Save _As...", () => _ = SaveDocumentAsAsync(Current), "Ctrl+Alt+S"),
-            Item("Sa_ve All", () => _ = SaveAllAsync(), "Ctrl+Shift+S"),
-            Item("_Close", () => _ = CloseDocumentAsync(Current), "Ctrl+W"),
-            Item("Clos_e All", () => _ = CloseAllAsync(), "Ctrl+Shift+W"),
+            Item("_Open...", () => Run(() => OpenWithDialogAsync()), "Ctrl+O"),
+            Item("_Reload from Disk", () => Run(() => ReloadCurrentAsync())),
+            Item("_Save", () => Run(() => SaveDocumentAsync(Current)), "Ctrl+S"),
+            Item("Save _As...", () => Run(() => SaveDocumentAsAsync(Current)), "Ctrl+Alt+S"),
+            Item("Sa_ve All", () => Run(() => SaveAllAsync()), "Ctrl+Shift+S"),
+            Item("_Close", () => Run(() => CloseDocumentAsync(Current)), "Ctrl+W"),
+            Item("Clos_e All", () => Run(() => CloseAllAsync()), "Ctrl+Shift+W"),
             new Separator(),
             Item("E_xit", Close, "Alt+F4", active: false)));
         menu.Items.Add(Menu("_Edit",
@@ -326,7 +434,7 @@ internal sealed partial class MainWindow : Window
             Item("Find _Previous", () => FindAgain(backward: true), "Shift+F3"),
             Item("_Replace", () => ShowFind(replace: true), "Ctrl+H"),
             new Separator(),
-            Item("_Go to Line...", () => _ = GoToLineAsync(), "Ctrl+G")));
+            Item("_Go to Line...", () => Run(() => GoToLineAsync()), "Ctrl+G")));
         menu.Items.Add(Menu("_View",
             alwaysOnTopItem,
             new Separator(),
@@ -345,7 +453,12 @@ internal sealed partial class MainWindow : Window
             Menu("_Theme", [.. themeItems.Values]),
             Menu("_Accent Color", [.. accentItems.Values]),
             Item("Toggle _Dark/Light", ToggleDarkLight, "Ctrl+Shift+D")));
-        menu.Items.Add(Menu("_?", Item("_About " + AppName, () => _ = ShowAboutAsync(), "F1")));
+        menu.Items.Add(Menu("_?", Item("_About " + AppName, () => Run(() => ShowAboutAsync()), "F1")));
+
+        // Zoom from the main keyboard too, not only the numpad: Ctrl+= / Ctrl++ (Shift on some layouts) and Ctrl+-.
+        Bind("Ctrl+OemPlus", () => ChangeZoom(1));
+        Bind("Ctrl+Shift+OemPlus", () => ChangeZoom(1));
+        Bind("Ctrl+OemMinus", () => ChangeZoom(-1));
         return menu;
     }
 
@@ -413,10 +526,10 @@ internal sealed partial class MainWindow : Window
     {
         var bar = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(8, 2, 8, 6) };
         ToolButton(bar, Icons.New, "New", NewDocument);
-        ToolButton(bar, Icons.Open, "Open", () => _ = OpenWithDialogAsync());
-        saveButton = ToolButton(bar, Icons.Save, "Save", () => _ = SaveDocumentAsync(Current));
-        ToolButton(bar, Icons.SaveAll, "Save All", () => _ = SaveAllAsync());
-        ToolButton(bar, Icons.Close, "Close", () => _ = CloseDocumentAsync(Current));
+        ToolButton(bar, Icons.Open, "Open", () => Run(() => OpenWithDialogAsync()));
+        saveButton = ToolButton(bar, Icons.Save, "Save", () => Run(() => SaveDocumentAsync(Current)));
+        ToolButton(bar, Icons.SaveAll, "Save All", () => Run(() => SaveAllAsync()));
+        ToolButton(bar, Icons.Close, "Close", () => Run(() => CloseDocumentAsync(Current)));
         ToolSeparator(bar);
         ToolButton(bar, Icons.Cut, "Cut", () => Current?.Editor.Cut());
         ToolButton(bar, Icons.Copy, "Copy", () => Current?.Editor.Copy());
@@ -433,8 +546,8 @@ internal sealed partial class MainWindow : Window
         ToolSeparator(bar);
         ToolButton(bar, Icons.Wrap, "Word wrap", () => SetWordWrap(!settings.WordWrap));
         ToolSeparator(bar);
-        themeButton = ToolButton(bar, Icons.Sun, "Toggle dark/light mode (Ctrl+Shift+D)", ToggleDarkLight);
-        ToolButton(bar, Icons.Sliders, "Preferences (Ctrl+,)", ShowSettings);
+        themeButton = ToolButton(bar, Icons.Sun, $"Toggle dark/light mode ({ShortcutText("Ctrl+Shift+D")})", ToggleDarkLight);
+        ToolButton(bar, Icons.Sliders, $"Preferences ({ShortcutText("Ctrl+OemComma")})", ShowSettings);
         return new Border { Child = bar, Background = Look.ChromeBack };
     }
 
@@ -481,7 +594,7 @@ internal sealed partial class MainWindow : Window
                 UpdateStatus();
             }
         };
-        doc.CloseRequested += (_, _) => _ = CloseDocumentAsync(doc);
+        doc.CloseRequested += (_, _) => Run(() => CloseDocumentAsync(doc));
         editor.TextArea.Caret.PositionChanged += (_, _) => UpdateStatus();
         editor.TextArea.SelectionChanged += (_, _) => UpdateStatus();
         // Insert toggles overtype without moving the caret or changing text, so nothing else refreshes "OVR".
@@ -494,7 +607,7 @@ internal sealed partial class MainWindow : Window
         };
         editor.AddHandler(PointerWheelChangedEvent, (_, e) =>
         {
-            if (e.KeyModifiers.HasFlag(KeyModifiers.Control))
+            if (e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(CommandKey))
             {
                 ChangeZoom(e.Delta.Y > 0 ? 1 : -1);
                 e.Handled = true;
@@ -798,9 +911,10 @@ internal sealed partial class MainWindow : Window
 
     private void SetEol(EolKind eol)
     {
-        if (Current is { } doc && doc.Eol != eol)
+        if (Current is { } doc && (doc.Eol != eol || doc.HasMixedEol))
         {
             doc.Eol = eol;
+            doc.HasMixedEol = false;
             doc.MarkDirty();
         }
     }
@@ -893,9 +1007,10 @@ internal sealed partial class MainWindow : Window
     {
         ApplyTheme();
         ApplyEditorSettings();
-        if (screenshotPath is null)
+        if (screenshotPath is null && settings.Save() is { } problem)
         {
-            settings.Save();
+            transientMessage = $"Settings not saved: {problem}";
+            UpdateStatus();
         }
     }
 

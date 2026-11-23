@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=PadSharp
+GenericName=Text Editor
+Comment=A small, fast scratchpad editor
+Exec="@EXEC@" %F
+Icon=padsharp
+Terminal=false
+Categories=Utility;TextEditor;
+MimeType=text/plain;
+StartupWMClass=PadSharp

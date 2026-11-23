@@ -86,9 +86,10 @@ internal sealed partial class MainWindow
 
         positionText.Text = FormatPosition(doc);
         linesText.Text = doc.LineCount == 1 ? "1 line" : $"{FormatNumber(doc.LineCount)} lines";
-        eolText.Text = TextFile.EolShortName(doc.Eol);
+        eolText.Text = doc.HasMixedEol ? $"Mixed → {TextFile.EolShortName(doc.Eol)}" : TextFile.EolShortName(doc.Eol);
         encodingText.Text = TextFile.EncodingName(doc.Encoding);
-        languageText.Text = transientMessage ?? doc.Language.Name;
+        languageText.Text = transientMessage
+            ?? (sessionProblem is null ? doc.Language.Name : $"⚠ Unsaved text not protected: {sessionProblem}");
         transientMessage = null;
         SyncMenuChecks(doc);
 

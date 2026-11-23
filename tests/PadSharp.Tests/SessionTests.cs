@@ -69,6 +69,38 @@ public sealed class SessionTests : IDisposable
     }
 
     [AvaloniaFact]
+    public void SavingLeavesNoHalfWrittenFilesAndKeepsTheDiskStamp()
+    {
+        DateTime stamp = new(2026, 1, 2, 3, 4, 5, DateTimeKind.Utc);
+        string? problem = Session.Save(new SessionState { Tabs = [new SessionTab { Buffer = "b.txt", DiskStamp = stamp }] }, [("b.txt", "x")]);
+
+        Assert.Null(problem);
+        Assert.Empty(Directory.EnumerateFiles(sandbox.Data, "*.tmp", SearchOption.AllDirectories));
+        Assert.Equal(stamp, Session.Load()?.Tabs.Single().DiskStamp);
+    }
+
+    [AvaloniaFact]
+    public void AFailedSaveSaysWhy()
+    {
+        string blocker = Path.Combine(sandbox.Root, "not-a-folder");
+        File.WriteAllText(blocker, "a file where the data folder should be");
+        AppSettings.DataFolder = blocker;
+
+        Assert.NotNull(Session.Save(new SessionState(), [("b.txt", "x")]));
+    }
+
+    [AvaloniaFact]
+    public void OwnershipGoesToOneWindowPerClaim()
+    {
+        Assert.True(Session.TryClaim());
+        Assert.True(Session.TryTakeOwnership());
+        Assert.False(Session.TryTakeOwnership());
+
+        Session.Release();
+        Assert.True(Session.TryTakeOwnership());
+    }
+
+    [AvaloniaFact]
     public void OnlyOneOwnerAtATime()
     {
         Assert.True(Session.TryClaim());

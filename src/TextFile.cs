@@ -21,7 +21,8 @@ internal enum TextEncodingKind
     Utf16LeBom,
 }
 
-internal sealed record LoadedText(string Text, TextEncodingKind Encoding, EolKind Eol);
+/// <summary>A loaded file: text with LF breaks, its encoding, its line-ending style, and whether it mixed styles.</summary>
+internal sealed record LoadedText(string Text, TextEncodingKind Encoding, EolKind Eol, bool MixedEol = false);
 
 /// <summary>Reads and writes plain text files, detecting encoding and line endings.</summary>
 internal static class TextFile
@@ -74,7 +75,7 @@ internal static class TextFile
         byte[] bytes = File.ReadAllBytes(path);
         (string raw, TextEncodingKind enc) = Decode(bytes);
         EolKind eol = DetectEol(raw);
-        return new LoadedText(NormalizeEol(raw), enc, eol);
+        return new LoadedText(NormalizeEol(raw), enc, eol, HasMixedEol(raw));
     }
 
     public static void Save(string path, string normalizedText, TextEncodingKind encoding, EolKind eol)
@@ -126,6 +127,29 @@ internal static class TextFile
         {
             return (AnsiEncoding.GetString(bytes), TextEncodingKind.Ansi);
         }
+    }
+
+    /// <summary>True when the text uses more than one line-ending style (saving would convert some lines).</summary>
+    public static bool HasMixedEol(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        bool crlf = false, lf = false, cr = false;
+        for (int i = 0; i < text.Length; i++)
+        {
+            if (text[i] == '\r')
+            {
+                bool pair = i + 1 < text.Length && text[i + 1] == '\n';
+                crlf |= pair;
+                cr |= !pair;
+                i += pair ? 1 : 0;
+            }
+            else if (text[i] == '\n')
+            {
+                lf = true;
+            }
+        }
+
+        return (crlf ? 1 : 0) + (lf ? 1 : 0) + (cr ? 1 : 0) > 1;
     }
 
     private static EolKind DetectEol(string text)

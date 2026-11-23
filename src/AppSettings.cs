@@ -30,6 +30,21 @@ internal sealed class AppSettings
 
     public bool ShowWhitespace { get; set; }
 
+    /// <summary>Zoom steps (points added to the font size), kept between runs.</summary>
+    public int Zoom { get; set; }
+
+    /// <summary>The window's size when last closed (not maximized), in device-independent pixels.</summary>
+    public double WindowWidth { get; set; } = 1100;
+
+    public double WindowHeight { get; set; } = 720;
+
+    /// <summary>The window's top-left corner when last closed, in screen pixels; null lets the system place it.</summary>
+    public int? WindowX { get; set; }
+
+    public int? WindowY { get; set; }
+
+    public bool WindowMaximized { get; set; }
+
     /// <summary>
     /// The folder for settings and the session: <c>PADSHARP_DATA</c> when set (a portable copy, or tests),
     /// otherwise e.g. %APPDATA%\PadSharp on Windows.
@@ -64,17 +79,20 @@ internal sealed class AppSettings
         return new AppSettings();
     }
 
-    /// <summary>Writes the settings; failures are reported on the error stream and otherwise ignored.</summary>
-    public void Save()
+    /// <summary>Writes the settings; returns why that failed, or null when it worked.</summary>
+    public string? Save()
     {
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-            File.WriteAllText(FilePath, JsonSerializer.Serialize(this, SettingsJson.Default.AppSettings));
+            string temp = FilePath + ".tmp";
+            File.WriteAllText(temp, JsonSerializer.Serialize(this, SettingsJson.Default.AppSettings));
+            File.Move(temp, FilePath, overwrite: true);
+            return null;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            Console.Error.WriteLine($"Settings not saved: {ex.Message}");
+            return ex.Message;
         }
     }
 
@@ -83,6 +101,9 @@ internal sealed class AppSettings
     {
         FontSizePt = double.IsFinite(FontSizePt) ? Math.Clamp(FontSizePt, MinFontSizePt, MaxFontSizePt) : Look.DefaultFontSizePt;
         TabWidth = Math.Clamp(TabWidth, 1, 16);
+        Zoom = Math.Clamp(Zoom, Look.MinZoom, Look.MaxZoom);
+        WindowWidth = double.IsFinite(WindowWidth) ? Math.Clamp(WindowWidth, 400, 20000) : 1100;
+        WindowHeight = double.IsFinite(WindowHeight) ? Math.Clamp(WindowHeight, 300, 20000) : 720;
         if (string.IsNullOrWhiteSpace(FontName))
         {
             FontName = Look.DefaultFontName;

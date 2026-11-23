@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="256" height="256">
+  <!-- The PadSharp logo, as drawn in code by Icons.Logo: a gradient tile, three text lines and a caret. -->
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8B5CF6"/>
+      <stop offset="1" stop-color="#EC4899"/>
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="8" fill="url(#g)"/>
+  <path d="M8,10 H24 M8,16 H20 M8,22 H14" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <path d="M19,19 V25" stroke="#FFFFFF" stroke-opacity="0.75" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+</svg>

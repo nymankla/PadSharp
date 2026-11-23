@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
@@ -179,6 +180,73 @@ public sealed class MainWindowTests : IDisposable
     }
 
     [AvaloniaFact]
+    public void TheMainKeyboardZoomsToo()
+    {
+        MainWindow window = sandbox.Open();
+        double normal = window.Current!.Editor.FontSize;
+
+        window.Press(Key.OemPlus, RawInputModifiers.Control);
+        window.Press(Key.OemPlus, RawInputModifiers.Control | RawInputModifiers.Shift);
+        Assert.Equal(normal + Look.PtToDip(2), window.Current.Editor.FontSize, 3);
+
+        window.Press(Key.OemMinus, RawInputModifiers.Control);
+        Assert.Equal(normal + Look.PtToDip(1), window.Current.Editor.FontSize, 3);
+    }
+
+    [AvaloniaFact]
+    public void ShortcutsUseTheCommandKeyOfThePlatform()
+    {
+        var save = KeyGesture.Parse("Ctrl+S");
+        var tabs = KeyGesture.Parse("Ctrl+Shift+W");
+        var f3 = KeyGesture.Parse("Shift+F3");
+
+        Assert.Same(save, MainWindow.ForPlatform(save, KeyModifiers.Control));
+        Assert.Equal(new KeyGesture(Key.S, KeyModifiers.Meta), MainWindow.ForPlatform(save, KeyModifiers.Meta));
+        Assert.Equal(new KeyGesture(Key.W, KeyModifiers.Meta | KeyModifiers.Shift), MainWindow.ForPlatform(tabs, KeyModifiers.Meta));
+        Assert.Same(f3, MainWindow.ForPlatform(f3, KeyModifiers.Meta));
+    }
+
+    [AvaloniaFact]
+    public void SizeMaximizedAndZoomAreRememberedBetweenRuns()
+    {
+        var settings = new AppSettings { WindowWidth = 900, WindowHeight = 600, Zoom = 3 };
+        MainWindow first = sandbox.Open(settings);
+        Assert.Equal((900, 600), (first.Width, first.Height));
+        Assert.Equal(Look.PtToDip(Look.DefaultFontSizePt + 3), first.Current!.Editor.FontSize, 3);
+
+        first.Press(Key.Add, RawInputModifiers.Control);
+        first.WindowState = WindowState.Maximized;
+        first.Close();
+        Dispatcher.UIThread.RunJobs();
+
+        AppSettings saved = AppSettings.Load();
+        Assert.Equal((4, true), (saved.Zoom, saved.WindowMaximized));
+        Assert.Equal((900, 600), (saved.WindowWidth, saved.WindowHeight));
+
+        MainWindow second = sandbox.Open(saved);
+        Assert.Equal(WindowState.Maximized, second.WindowState);
+        Assert.Equal(Look.PtToDip(Look.DefaultFontSizePt + 4), second.Current!.Editor.FontSize, 3);
+    }
+
+    [AvaloniaFact]
+    public void TheNormalSizeAndPositionAreSavedOnClose()
+    {
+        var settings = new AppSettings { WindowX = 120, WindowY = 80 };
+        MainWindow window = sandbox.Open(settings);
+        Assert.Equal(new PixelPoint(120, 80), window.Position);
+
+        window.Width = 777;
+        window.Height = 555;
+        Dispatcher.UIThread.RunJobs();
+        window.Close();
+        Dispatcher.UIThread.RunJobs();
+
+        AppSettings saved = AppSettings.Load();
+        Assert.Equal((777, 555, false), (saved.WindowWidth, saved.WindowHeight, saved.WindowMaximized));
+        Assert.Equal((120, 80), (saved.WindowX, saved.WindowY));
+    }
+
+    [AvaloniaFact]
     public void ToggleDarkLightSwitchesAndSavesTheTheme()
     {
         var settings = new AppSettings { Theme = ThemeMode.Dark };
@@ -189,6 +257,19 @@ public sealed class MainWindowTests : IDisposable
         Assert.Equal(ThemeMode.Light, settings.Theme);
         Assert.False(Look.Current.IsDark);
         Assert.Equal(ThemeMode.Light, AppSettings.Load().Theme);
+    }
+
+    [AvaloniaFact]
+    public void AFailedSettingsSaveIsShown()
+    {
+        MainWindow window = sandbox.Open();
+        string blocker = Path.Combine(sandbox.Root, "blocked");
+        File.WriteAllText(blocker, "file");
+        AppSettings.DataFolder = blocker;
+
+        Run(window, "_Word wrap");
+
+        Assert.StartsWith("Settings not saved:", window.StatusParts[0], StringComparison.Ordinal);
     }
 
     [AvaloniaFact]

@@ -118,6 +118,33 @@ public sealed class DocumentTests : IDisposable
     }
 
     [AvaloniaFact]
+    public void MixedLineEndingsAreFlaggedUntilSaved()
+    {
+        string path = sandbox.File("mixed.txt", "a\r\nb\nc");
+        var doc = new Document(0);
+        doc.LoadFrom(path);
+        Assert.True(doc.HasMixedEol);
+
+        doc.SaveTo(path);
+
+        Assert.False(doc.HasMixedEol);
+        Assert.Equal("a\r\nb\r\nc", File.ReadAllText(path));
+    }
+
+    [AvaloniaFact]
+    public void RestoreKeepsTheSavedDiskStamp()
+    {
+        string path = sandbox.File("s.txt", "on disk");
+        DateTime before = File.GetLastWriteTimeUtc(path).AddMinutes(-5);
+        var doc = new Document(0);
+
+        doc.Restore(path, "edited", TextEncodingKind.Utf8, EolKind.Windows, Languages.NormalText, 0, before);
+
+        Assert.Equal(before, doc.DiskStamp);
+        Assert.True(doc.IsChangedOnDisk);
+    }
+
+    [AvaloniaFact]
     public void MarkDirtyCoversChangesOutsideTheText()
     {
         var doc = new Document(1);

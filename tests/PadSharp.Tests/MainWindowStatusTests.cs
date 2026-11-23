@@ -37,6 +37,19 @@ public sealed class MainWindowStatusTests : IDisposable
     }
 
     [AvaloniaFact]
+    public void MixedLineEndingsShowUntilALineEndingIsChosen()
+    {
+        MainWindow window = sandbox.Open(files: [sandbox.File("m.txt", "a\r\nb\nc")]);
+        Assert.Equal("Mixed → CRLF", window.StatusParts[3]);
+
+        window.All<MenuItem>().Single(m => m.Header as string == "Windows (CRLF)").Command!.Execute(null);
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Equal("CRLF", window.StatusParts[3]);
+        Assert.True(window.Current!.IsDirty);
+    }
+
+    [AvaloniaFact]
     public void InsertTogglesOvertype()
     {
         MainWindow window = sandbox.Open();

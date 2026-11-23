@@ -87,6 +87,19 @@ public sealed class TextFileTests : IDisposable
         Assert.Equal((text, encoding, eol), (loaded.Text, loaded.Encoding, loaded.Eol));
     }
 
+    [AvaloniaTheory]
+    [InlineData("a\r\nb\nc", true)]
+    [InlineData("a\rb\nc", true)]
+    [InlineData("a\r\nb\rc", true)]
+    [InlineData("a\r\nb\r\nc", false)]
+    [InlineData("a\nb\n", false)]
+    [InlineData("none", false)]
+    public void MixedLineEndingsAreNoticed(string text, bool mixed)
+    {
+        Assert.Equal(mixed, TextFile.HasMixedEol(text));
+        Assert.Equal(mixed, TextFile.Load(sandbox.File(Guid.NewGuid() + ".txt", text)).MixedEol);
+    }
+
     [AvaloniaFact]
     public void NormalizeEolTurnsEveryBreakIntoLf() =>
         Assert.Equal("a\nb\nc\n", TextFile.NormalizeEol("a\r\nb\rc\n"));

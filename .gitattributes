@@ -1,5 +1,5 @@
 # Normalise line endings in the repository; per-file exceptions follow.
 * text=auto
-# Shell scripts must keep LF line endings or they fail on Linux/macOS; cmd files use CRLF.
-dist/ed text eol=lf
+# Everything shipped for Linux/macOS (shell scripts, .desktop, Info.plist) must keep LF; cmd files use CRLF.
+dist/** text eol=lf
 *.cmd text eol=crlf

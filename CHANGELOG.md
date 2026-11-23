@@ -27,9 +27,19 @@ All notable changes to PadSharp are listed here. The format follows
 - The `ed` launcher (`ed.cmd` on Windows) next to the program. It starts PadSharp from a terminal and works under
   any name.
 - `PADSHARP_DATA` keeps settings and the session in a folder of your choice, for portable use.
-- Native AOT builds for Windows, Linux and macOS that need no .NET runtime installed.
+- Native AOT builds for Windows, Linux and macOS that need no .NET runtime installed: a zip for Windows, a tarball
+  with an installer (app menu entry, icon, `padsharp` command) for Linux, and `PadSharp.app` for macOS.
+- PadSharp runs once: starting it again, for example with `ed notes.txt`, opens the files in the running window.
+- Window size, position, maximized state and zoom are remembered between runs.
+- Zoom with `Ctrl+=` / `Ctrl+-` on the main keyboard, not only the numpad.
+- On macOS, shortcuts use `Cmd` instead of `Ctrl`.
+- Files with mixed line endings show `Mixed → CRLF` in the status bar before saving converts them.
+- Unsaved text is also kept if PadSharp crashes, and the status bar warns when it can't be kept.
 
 ### Fixed
 
 - TeX files are now coloured. The definition that came with the editor component never loaded.
 - Starting PadSharp with a file that doesn't exist shows a message instead of crashing.
+- A file changed while PadSharp was closed is now noticed when its unsaved tab comes back, instead of being
+  overwritten on the next save.
+- Saving settings or kept tabs can no longer leave a half-written file behind after a crash.

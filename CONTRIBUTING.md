@@ -48,6 +48,26 @@ shortcuts and messages. Update its Behaviour section when you change any of them
 
 By contributing, you agree that your contributions are licensed under the [MIT License](LICENSE).
 
+## Releasing
+
+1. Set `<Version>` in `PadSharp.csproj` to the new number, for example `0.2.0`.
+2. In `CHANGELOG.md`, rename `## [Unreleased]` to `## [0.2.0] - <yyyy-mm-dd>` and start a new empty `[Unreleased]`.
+3. Commit, then tag and push: `git tag v0.2.0 && git push origin v0.2.0`.
+
+The **Release** workflow checks that the tag, `<Version>` and the changelog agree. It tests, packages Windows, Linux
+and macOS, and publishes a GitHub release with that changelog section as its notes.
+
+Signing is optional. It runs only when these repository secrets exist:
+
+| Secret | For |
+|---|---|
+| `WINDOWS_CERT_PFX` (base64), `WINDOWS_CERT_PASSWORD` | Authenticode signing of `PadSharp.exe` |
+| `MACOS_CERT_P12` (base64), `MACOS_CERT_PASSWORD`, `MACOS_SIGN_IDENTITY` | Developer ID signing of `PadSharp.app` |
+| `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_PASSWORD` | Notarizing the macOS app |
+
+Without them, Windows builds are unsigned and the macOS app is ad-hoc signed; the README explains how users open
+them anyway.
+
 ## Reporting bugs and ideas
 
 Use the issue templates. For a bug, include your operating system, the PadSharp version or commit, and the steps to
