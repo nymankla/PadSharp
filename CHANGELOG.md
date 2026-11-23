@@ -6,6 +6,8 @@ All notable changes to PadSharp are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-24
+
 ### Added
 
 - Wildcards in file names on the command line, such as `ed *.cs` or `ed notes/day?.md`, open every matching file,
@@ -45,5 +47,6 @@ All notable changes to PadSharp are listed here. The format follows
   kept tabs are written in full before they replace the old copy.
 - A file changed while PadSharp was closed is noticed when its unsaved tab comes back.
 
-[Unreleased]: https://github.com/nymankla/PadSharp/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/nymankla/PadSharp/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/nymankla/PadSharp/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/nymankla/PadSharp/releases/tag/v0.1.0

@@ -9,7 +9,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <RootNamespace>PadSharp</RootNamespace>
     <AssemblyName>PadSharp</AssemblyName>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <Authors>Klas Nyman</Authors>
     <Copyright>Copyright (c) 2026 Klas Nyman</Copyright>
     <Description>A small, fast, cross-platform scratchpad editor.</Description>
