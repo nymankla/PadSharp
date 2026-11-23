@@ -6,6 +6,8 @@ All notable changes to PadSharp are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-23
+
 ### Added
 
 - Tabs with **hot exit**: closing PadSharp never asks to save. Tabs, unsaved text and cursor positions come back on
@@ -34,12 +36,9 @@ All notable changes to PadSharp are listed here. The format follows
 - Zoom with `Ctrl+=` / `Ctrl+-` on the main keyboard, not only the numpad.
 - On macOS, shortcuts use `Cmd` instead of `Ctrl`.
 - Files with mixed line endings show `Mixed → CRLF` in the status bar before saving converts them.
-- Unsaved text is also kept if PadSharp crashes, and the status bar warns when it can't be kept.
+- Unsaved text is also kept if PadSharp crashes, and the status bar warns when it can't be kept. Settings and
+  kept tabs are written in full before they replace the old copy.
+- A file changed while PadSharp was closed is noticed when its unsaved tab comes back.
 
-### Fixed
-
-- TeX files are now coloured. The definition that came with the editor component never loaded.
-- Starting PadSharp with a file that doesn't exist shows a message instead of crashing.
-- A file changed while PadSharp was closed is now noticed when its unsaved tab comes back, instead of being
-  overwritten on the next save.
-- Saving settings or kept tabs can no longer leave a half-written file behind after a crash.
+[Unreleased]: https://github.com/nymankla/PadSharp/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/nymankla/PadSharp/releases/tag/v0.1.0
