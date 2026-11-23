@@ -37,6 +37,10 @@ Compare with the baselines below.
 | When | Methods | Max lines | Max cc | Max cognitive | Max nesting | Largest type | Copies |
 |---|---|---|---|---|---|---|---|
 | Scratchpad rework (Nov 2026) | 179 | 103 (`BuildMenu`) | 13 | 15 (`RestoreSession`) | 3 | 1334 (`MainWindow`) | 0 |
+| MainWindow split into partials, session/find/status extractions (Nov 2026) | 188 | 103 (`BuildMenu`) | 13 | 12 (`OpenFiles`) | 3 | 962 (`MainWindow.cs`) | 0 |
+
+A partial class is measured per file, so add up its files when judging its size (`MainWindow` is about 1,400 lines
+over four files).
 
 ## 3. Read before recommending
 

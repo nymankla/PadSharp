@@ -136,6 +136,9 @@ internal sealed class Document
 
     public string Text => Editor.Document.Text;
 
+    /// <summary>The first line only, enough for language detection without copying the whole document.</summary>
+    public string FirstLine => Editor.Document.GetText(Editor.Document.GetLineByNumber(1));
+
     public string Title => FilePath is null ? $"Untitled-{UntitledNumber}" : System.IO.Path.GetFileName(FilePath);
 
     public string FullName => FilePath ?? Title;

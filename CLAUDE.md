@@ -40,7 +40,10 @@ from the package and are harmless.
 ## Architecture
 
 The UI is built in code (no XAML views); `App.cs` sets up the Fluent theme and theme-resource overrides,
-`MainWindow.cs` owns the menu, toolbar, tabs, status bar and all commands.
+`MainWindow` owns the menu, toolbar, tabs, status bar and all commands. It is a partial class split by seam:
+`MainWindow.cs` (layout, menu, toolbar, file and edit commands, theme), `MainWindow.Session.cs` (hot exit and
+disk-change checks), `MainWindow.Find.cs` (acting on the find bar), `MainWindow.Status.cs` (status bar, pickers,
+menu checks, title). Put new code in the file of its seam.
 
 - **Document** (`Document.cs`): one tab = one `TextEditor` + `LineNumberGutter` + tab header. Holds file path,
   EOL kind, encoding, language and dirty state (undo-stack based, plus `MarkDirty` for EOL/encoding changes).

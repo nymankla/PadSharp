@@ -67,38 +67,31 @@ internal static class Languages
             : All.FirstOrDefault(l => l.Extensions.Contains(ext, StringComparer.OrdinalIgnoreCase));
     }
 
+    /// <summary>
+    /// <c>#!</c> lines: the first interpreter name the line contains wins, so "sh" comes last
+    /// (it is also inside "pwsh", "bash" and "zsh").
+    /// </summary>
+    private static readonly (string Interpreter, string Language)[] Interpreters =
+    [
+        ("python", "Python"), ("rust-script", "Rust"), ("pwsh", "PowerShell"), ("node", "JavaScript"), ("php", "PHP"), ("sh", "Shell"),
+    ];
+
+    /// <summary>Other first lines, matched by how they start.</summary>
+    private static readonly (string Opening, string Language)[] Openings =
+    [
+        ("<?xml", "XML"), ("<!DOCTYPE html", "HTML"), ("<html", "HTML"), ("<?php", "PHP"),
+    ];
+
     /// <summary>Guesses from how the text begins: a <c>#!</c> line, an XML declaration or an HTML doctype.</summary>
     public static Language? FromContent(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
         int end = text.AsSpan().IndexOfAny('\r', '\n');
         string first = (end < 0 ? text : text[..end]).TrimStart('﻿').Trim();
-
-        if (first.StartsWith("#!", StringComparison.Ordinal))
-        {
-            return first switch
-            {
-                _ when first.Contains("python", StringComparison.OrdinalIgnoreCase) => ByName("Python"),
-                _ when first.Contains("rust-script", StringComparison.OrdinalIgnoreCase) => ByName("Rust"),
-                _ when first.Contains("pwsh", StringComparison.OrdinalIgnoreCase) => ByName("PowerShell"),
-                _ when first.Contains("node", StringComparison.OrdinalIgnoreCase) => ByName("JavaScript"),
-                _ when first.Contains("php", StringComparison.OrdinalIgnoreCase) => ByName("PHP"),
-                _ when first.Contains("sh", StringComparison.OrdinalIgnoreCase) => ByName("Shell"),
-                _ => null,
-            };
-        }
-
-        if (first.StartsWith("<?xml", StringComparison.OrdinalIgnoreCase))
-        {
-            return ByName("XML");
-        }
-
-        if (first.StartsWith("<!DOCTYPE html", StringComparison.OrdinalIgnoreCase) || first.StartsWith("<html", StringComparison.OrdinalIgnoreCase))
-        {
-            return ByName("HTML");
-        }
-
-        return first.StartsWith("<?php", StringComparison.OrdinalIgnoreCase) ? ByName("PHP") : null;
+        string? name = first.StartsWith("#!", StringComparison.Ordinal)
+            ? Interpreters.FirstOrDefault(e => first.Contains(e.Interpreter, StringComparison.OrdinalIgnoreCase)).Language
+            : Openings.FirstOrDefault(e => first.StartsWith(e.Opening, StringComparison.OrdinalIgnoreCase)).Language;
+        return name is null ? null : ByName(name);
     }
 
     /// <summary>Extension first, then the first line, then Plain Text.</summary>

@@ -16,7 +16,7 @@ using AvaloniaEdit.Document;
 namespace PadSharp;
 
 /// <summary>The editor window: menus, toolbar, document tabs and status bar.</summary>
-internal sealed class MainWindow : Window
+internal sealed partial class MainWindow : Window
 {
     private const string AppName = "PadSharp";
     private const int ScreenshotFrames = 120;
@@ -394,68 +394,6 @@ internal sealed class MainWindow : Window
         return new Border { Child = bar, Background = Look.ChromeBack };
     }
 
-    /// <summary>Language, position, line count, line endings, encoding. Language, line endings and encoding open a picker on click.</summary>
-    private Border BuildStatusBar()
-    {
-        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto,Auto,Auto") };
-        (TextBlock Text, Action? Click)[] parts =
-        [
-            (languageText, () => ShowPicker(languageText, Languages.All, l => l.Name, l => l == Current?.Language, SetLanguage)),
-            (positionText, null),
-            (linesText, null),
-            (eolText, () => ShowPicker(eolText, [EolKind.Windows, EolKind.Unix, EolKind.Macintosh], TextFile.EolName, k => k == Current?.Eol, SetEol)),
-            (encodingText, () => ShowPicker(encodingText, Enum.GetValues<TextEncodingKind>(), TextFile.EncodingName, k => k == Current?.Encoding, SetEncoding)),
-        ];
-        var divider = new SolidColorBrush(Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF));
-        for (int i = 0; i < parts.Length; i++)
-        {
-            (TextBlock text, Action? click) = parts[i];
-            text.FontSize = 12;
-            text.Foreground = Brushes.White;
-            text.VerticalAlignment = VerticalAlignment.Center;
-            var cell = new Border
-            {
-                Child = text,
-                Padding = new Thickness(12, 5),
-                MinWidth = i == 0 ? 0 : 70,
-                Background = Brushes.Transparent,
-                BorderBrush = divider,
-                BorderThickness = new Thickness(i == 0 ? 0 : 1, 0, 0, 0),
-                Margin = new Thickness(0, 3),
-            };
-            if (click is not null)
-            {
-                cell.Cursor = new Cursor(StandardCursorType.Hand);
-                cell.PointerPressed += (_, _) => click();
-            }
-
-            Grid.SetColumn(cell, i);
-            grid.Children.Add(cell);
-        }
-
-        languageText.FontWeight = FontWeight.SemiBold;
-        return new Border { Child = grid, Background = Look.StatusGradient };
-    }
-
-    /// <summary>A pop-up list above a status-bar cell, the current choice checked.</summary>
-    private static void ShowPicker<T>(Control anchor, IEnumerable<T> choices, Func<T, string> name, Func<T, bool> isCurrent, Action<T> pick)
-    {
-        var menu = new ContextMenu { Placement = PlacementMode.TopEdgeAlignedLeft };
-        foreach (T choice in choices)
-        {
-            T captured = choice;
-            menu.Items.Add(new MenuItem
-            {
-                Header = name(choice).Replace("_", "__", StringComparison.Ordinal),
-                ToggleType = MenuItemToggleType.Radio,
-                IsChecked = isCurrent(choice),
-                Command = new RelayCommand(() => pick(captured)),
-            });
-        }
-
-        menu.Open(anchor);
-    }
-
     private void OnPreviewKeyDown(object? sender, KeyEventArgs e)
     {
         if ((e.Key == Key.Tab || e.Key == Key.PageDown || e.Key == Key.PageUp) && e.KeyModifiers.HasFlag(KeyModifiers.Control))
@@ -502,7 +440,14 @@ internal sealed class MainWindow : Window
         doc.CloseRequested += (_, _) => _ = CloseDocumentAsync(doc);
         editor.TextArea.Caret.PositionChanged += (_, _) => UpdateStatus();
         editor.TextArea.SelectionChanged += (_, _) => UpdateStatus();
-        editor.TextArea.KeyUp += (_, _) => UpdateStatus();
+        // Insert toggles overtype without moving the caret or changing text, so nothing else refreshes "OVR".
+        editor.TextArea.KeyUp += (_, e) =>
+        {
+            if (e.Key == Key.Insert)
+            {
+                UpdateStatus();
+            }
+        };
         editor.AddHandler(PointerWheelChangedEvent, (_, e) =>
         {
             if (e.KeyModifiers.HasFlag(KeyModifiers.Control))
@@ -760,165 +705,6 @@ internal sealed class MainWindow : Window
         sessionPending = true;
     }
 
-    /// <summary>Reopens the tabs of the last run: unsaved text from the buffers folder, the rest from disk.</summary>
-    private void RestoreSession()
-    {
-        if (Session.Load() is not { } state)
-        {
-            return;
-        }
-
-        foreach (SessionTab tab in state.Tabs)
-        {
-            // A saved language is a manual choice; without one the language is detected again.
-            Language? chosen = Languages.All.FirstOrDefault(l => l.Name == tab.Language);
-            Document doc;
-            if (tab.Buffer is { } buffer && Session.ReadBuffer(buffer) is { } text)
-            {
-                doc = new Document(tab.Path is null ? Math.Max(1, tab.UntitledNumber) : 0);
-                doc.Restore(tab.Path, text, tab.Encoding, tab.Eol, chosen ?? Languages.Detect(tab.Path, text), tab.Caret);
-            }
-            else if (tab.Path is { } path && File.Exists(path))
-            {
-                doc = new Document(0);
-                try
-                {
-                    doc.LoadFrom(path);
-                }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-                {
-                    continue;
-                }
-
-                if (chosen is not null)
-                {
-                    doc.Language = chosen;
-                }
-
-                doc.Editor.CaretOffset = Math.Clamp(tab.Caret, 0, doc.Editor.Document.TextLength);
-            }
-            else
-            {
-                continue;
-            }
-
-            AddDocument(doc);
-        }
-
-        if (documents.Count > 0)
-        {
-            tabs.SelectedIndex = Math.Clamp(state.Selected, 0, documents.Count - 1);
-        }
-    }
-
-    private void SaveSessionIfPending()
-    {
-        if (sessionPending)
-        {
-            SaveSession();
-        }
-    }
-
-    /// <summary>Writes every tab to the session; unsaved text goes to the buffers folder, rewritten only when it changed.</summary>
-    private void SaveSession()
-    {
-        sessionPending = false;
-        var state = new SessionState();
-        var changed = new List<(string Name, string Text)>();
-        foreach (Document doc in tabs.Items.OfType<TabItem>().Select(t => t.Tag).OfType<Document>())
-        {
-            if (doc.IsPristineUntitled)
-            {
-                continue;
-            }
-
-            var entry = new SessionTab
-            {
-                Path = doc.FilePath,
-                UntitledNumber = doc.UntitledNumber,
-                Encoding = doc.Encoding,
-                Eol = doc.Eol,
-                // Only a manual choice is stored, so a later, better detection (e.g. a new language) takes effect.
-                Language = doc.Language == Languages.Detect(doc.FilePath, doc.Text) ? null : doc.Language.Name,
-                Caret = doc.Editor.CaretOffset,
-            };
-            if (doc.IsDirty)
-            {
-                entry.Buffer = doc.BufferName;
-                if (!savedRevisions.TryGetValue(doc, out int revision) || revision != doc.Revision)
-                {
-                    changed.Add((doc.BufferName, doc.Text));
-                    savedRevisions[doc] = doc.Revision;
-                }
-            }
-            else
-            {
-                // Its buffer file is deleted by this save; a later change must write it again.
-                savedRevisions.Remove(doc);
-            }
-
-            if (doc == Current)
-            {
-                state.Selected = state.Tabs.Count;
-            }
-
-            state.Tabs.Add(entry);
-        }
-
-        Session.Save(state, changed);
-    }
-
-    /// <summary>
-    /// On activation: files changed elsewhere are reloaded silently, unless they have unsaved changes here,
-    /// in which case the person chooses.
-    /// </summary>
-    private async Task CheckDiskChangesAsync()
-    {
-        if (checkingDisk)
-        {
-            return;
-        }
-
-        checkingDisk = true;
-        try
-        {
-            foreach (Document doc in documents.ToList())
-            {
-                if (!doc.IsChangedOnDisk || doc.FilePath is not { } path)
-                {
-                    continue;
-                }
-
-                if (doc.IsDirty)
-                {
-                    doc.AcceptDiskVersion();
-                    tabs.SelectedItem = doc.Tab;
-                    string? answer = await Dialogs.AskAsync(this, AppName,
-                        $"\"{doc.Title}\" was changed outside {AppName}. Reload it and lose your changes?", "Reload", "Keep Mine");
-                    if (answer != "Reload")
-                    {
-                        continue;
-                    }
-                }
-
-                try
-                {
-                    doc.LoadFrom(path, detectLanguage: false);
-                }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-                {
-                    doc.AcceptDiskVersion();
-                }
-            }
-        }
-        finally
-        {
-            checkingDisk = false;
-        }
-
-        UpdateStatus();
-    }
-
     private void ConvertCase(bool upper)
     {
         if (Current?.Editor is not { SelectionLength: > 0 } editor)
@@ -992,120 +778,6 @@ internal sealed class MainWindow : Window
         }
 
         UpdateStatus();
-    }
-
-    private void ShowFind(bool replace) => findBar.Open(replace, Current?.Editor.SelectedText ?? string.Empty);
-
-    private void FindAgain(bool backward)
-    {
-        if (findBar.Query.Length == 0)
-        {
-            ShowFind(replace: false);
-            return;
-        }
-
-        if (Current is { } doc)
-        {
-            Find(doc, findBar.Query, findBar.Options with { Backward = backward }, incremental: false);
-        }
-    }
-
-    /// <summary>Shows a find result in the bar, or in the status bar when the bar is closed (F3).</summary>
-    private void Report(string message, bool problem)
-    {
-        if (findBar.IsVisible)
-        {
-            findBar.SetStatus(message, problem);
-        }
-        else if (message.Length > 0)
-        {
-            transientMessage = message;
-            UpdateStatus();
-        }
-    }
-
-    /// <summary>"3 of 12" when <paramref name="at"/> is a match, otherwise the total.</summary>
-    private void ReportMatches(Document doc, string query, SearchOptions options, int? at)
-    {
-        List<int> matches = TextSearch.Matches(doc.Text, query, options);
-        int index = at is { } i ? matches.BinarySearch(i) : -1;
-        string message = matches.Count == 0 ? "No results"
-            : index >= 0 ? $"{FormatNumber(index + 1)} of {FormatNumber(matches.Count)}"
-            : matches.Count == 1 ? "1 match" : $"{FormatNumber(matches.Count)} matches";
-        Report(message, matches.Count == 0);
-    }
-
-    private static void SelectAndShow(TextEditor editor, int start, int length)
-    {
-        editor.Select(start, length);
-        editor.TextArea.Caret.BringCaretToView();
-    }
-
-    /// <summary>Selects the next match. Incremental searches start at the selection start, so typing extends the match in place.</summary>
-    private void Find(Document doc, string query, SearchOptions options, bool incremental)
-    {
-        TextEditor editor = doc.Editor;
-        int from = incremental ? editor.SelectionStart : editor.SelectionStart + editor.SelectionLength;
-        if (TextSearch.Find(doc.Text, query, editor.SelectionStart, from, options) is { } found)
-        {
-            SelectAndShow(editor, found.Index, found.Length);
-            ReportMatches(doc, query, options, found.Index);
-        }
-        else
-        {
-            Report("No results", problem: true);
-        }
-    }
-
-    private void OnFindRequested(object? sender, FindRequestEventArgs e)
-    {
-        if (Current is not { } doc)
-        {
-            return;
-        }
-
-        if (e.Query.Length == 0)
-        {
-            findBar.SetStatus(string.Empty, problem: false);
-            return;
-        }
-
-        TextEditor editor = doc.Editor;
-        switch (e.Action)
-        {
-            case FindAction.Incremental:
-            case FindAction.Next:
-                Find(doc, e.Query, e.Options, incremental: e.Action == FindAction.Incremental);
-                break;
-
-            case FindAction.Previous:
-                Find(doc, e.Query, e.Options with { Backward = true }, incremental: false);
-                break;
-
-            case FindAction.Replace:
-                if (TextSearch.IsMatchAt(doc.Text, e.Query, editor.SelectionStart, editor.SelectionLength, e.Options))
-                {
-                    int start = editor.SelectionStart;
-                    editor.Document.Replace(start, editor.SelectionLength, e.Replacement);
-                    editor.Select(start + e.Replacement.Length, 0);
-                }
-
-                Find(doc, e.Query, e.Options, incremental: false);
-                break;
-
-            case FindAction.ReplaceAll:
-                (string text, int total) = TextSearch.ReplaceAll(doc.Text, e.Query, e.Replacement, e.Options);
-                if (total > 0)
-                {
-                    doc.ReplaceAllText(text);
-                }
-
-                Report(total == 0 ? "No results" : $"Replaced {FormatNumber(total)}", problem: total == 0);
-                break;
-
-            default:
-                break;
-        }
     }
 
     private async Task GoToLineAsync()
@@ -1248,56 +920,6 @@ internal sealed class MainWindow : Window
 
     private Task<string?> ShowAboutAsync() =>
         Dialogs.AskAsync(this, "About " + AppName, $"{AppName}\nA small, fast scratchpad editor. Your tabs and unsaved text are kept between runs.", "OK");
-
-    private void UpdateStatus()
-    {
-        if (Current is not { } doc)
-        {
-            return;
-        }
-
-        TextEditor editor = doc.Editor;
-        int length = editor.Document.TextLength;
-        int caret = Math.Min(editor.CaretOffset, length);
-        int selected = Math.Min(editor.SelectionLength, length - Math.Min(editor.SelectionStart, length));
-        string position = $"Ln {FormatNumber(doc.LineOf(caret))}, Col {FormatNumber(doc.ColumnOf(caret))}";
-        if (selected > 0)
-        {
-            position += $"  ({FormatNumber(selected)} selected)";
-        }
-
-        if (editor.TextArea.OverstrikeMode)
-        {
-            position += "  OVR";
-        }
-
-        positionText.Text = position;
-        linesText.Text = doc.LineCount == 1 ? "1 line" : $"{FormatNumber(doc.LineCount)} lines";
-        eolText.Text = TextFile.EolShortName(doc.Eol);
-        encodingText.Text = TextFile.EncodingName(doc.Encoding);
-        languageText.Text = transientMessage ?? doc.Language.Name;
-        transientMessage = null;
-
-        foreach ((Language language, MenuItem item) in languageItems)
-        {
-            item.IsChecked = language == doc.Language;
-        }
-
-        foreach ((EolKind eol, MenuItem item) in eolItems)
-        {
-            item.IsChecked = eol == doc.Eol;
-        }
-
-        foreach ((TextEncodingKind enc, MenuItem item) in encodingItems)
-        {
-            item.IsChecked = enc == doc.Encoding;
-        }
-
-        saveButton.Opacity = doc.IsDirty ? 1 : 0.3;
-        undoButton.Opacity = editor.CanUndo ? 1 : 0.3;
-        redoButton.Opacity = editor.CanRedo ? 1 : 0.3;
-        Title = $"{(doc.IsDirty ? "*" : string.Empty)}{doc.FullName} - {AppName}";
-    }
 
     private void OnDragOver(object? sender, DragEventArgs e)
     {
